@@ -47,7 +47,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
 #hint{position:absolute;top:62px;left:16px;font-size:12px;font-weight:500;color:var(--muted);pointer-events:none;transition:opacity .5s}
 #hint.gone{opacity:0}
 #controls{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:min(calc(100% - 20px),440px);display:flex;flex-direction:column;gap:7px;padding:7px;background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
-.row{display:flex;gap:6px;align-items:stretch}
+.row{display:flex;gap:6px;align-items:stretch;flex-wrap:wrap}
 .seg{display:flex;flex:1;background:var(--seg);border-radius:12px;padding:3px;gap:2px}
 .seg button,.chip{appearance:none;-webkit-appearance:none;border:0;font:inherit;font-size:13px;font-weight:600;color:var(--muted);background:transparent;border-radius:9px;padding:8px 4px;flex:1;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .15s,color .15s}
 .seg button[aria-pressed="true"]{background:var(--on);color:var(--on-text)}
@@ -56,7 +56,22 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
 .chip:disabled{opacity:.4;cursor:default}
 .seg button:focus-visible,.chip:focus-visible{outline:2px solid var(--on);outline-offset:2px}
 .err{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted);font-size:14px}
-@media (prefers-reduced-motion: reduce){ #hint{transition:none} }
+#sims{position:absolute;top:12px;right:16px;width:206px;padding:9px;border-radius:14px;background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#simTabs{display:flex;flex-wrap:wrap;gap:4px}
+.simtab{appearance:none;-webkit-appearance:none;border:0;font:inherit;font-size:11.5px;font-weight:600;color:var(--muted);background:var(--seg);border-radius:8px;padding:5px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.simtab.on,.simtab[aria-pressed="true"]{background:var(--on);color:var(--on-text)}
+#simStatus{margin:8px 0 7px;font-size:11px;font-weight:500;color:var(--muted);min-height:14px}
+.need{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.need span{flex:0 0 50px;font-size:10.5px;font-weight:600;color:var(--muted)}
+.need i{flex:1;height:7px;border-radius:4px;background:var(--seg);overflow:hidden}
+.need i b{display:block;height:100%;width:0;border-radius:4px;background:var(--on);transition:width .25s linear}
+.need i b.low{background:#c6613f}
+#simActs{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+#simActs button{appearance:none;-webkit-appearance:none;border:0;font:inherit;font-size:11.5px;font-weight:600;color:var(--on-text);background:var(--on);border-radius:8px;padding:6px 9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#btnFree{margin-top:8px}
+.simtab:focus-visible,#simActs button:focus-visible{outline:2px solid var(--on);outline-offset:2px}
+@media (max-width:620px){ #sims{width:168px;top:auto;bottom:124px;right:10px} }
+@media (prefers-reduced-motion: reduce){ #hint{transition:none} .need i b{transition:none} }
 </style>
 </head>
 <body>
@@ -68,6 +83,13 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     <p>Stanwell Park, from the agent’s plan and your photos</p>
   </header>
   <div id="hint">Drag to orbit, pinch to zoom, two fingers to pan</div>
+  <aside id="sims" hidden>
+    <div id="simTabs"></div>
+    <p id="simStatus"></p>
+    <div id="simNeeds"></div>
+    <div id="simActs"></div>
+    <button type="button" class="simtab" id="btnFree">Free will</button>
+  </aside>
   <nav id="controls" aria-label="View controls">
     <div class="seg" role="group" aria-label="View">
       <button type="button" data-mode="exterior">Exterior</button>
@@ -80,6 +102,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
         <button type="button" data-floor="ground">Upper</button>
         <button type="button" data-floor="lower">Flat</button>
       </div>
+      <button type="button" class="chip" id="btnPlay">Play</button>
       <button type="button" class="chip" id="btnLabels">Labels</button>
       <button type="button" class="chip" id="btnTop">Plan</button>
       <button type="button" class="chip" id="btnReset" aria-label="Reset view">↺</button>
@@ -459,6 +482,11 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   const site = new THREE.Group(), ground = new THREE.Group(), lower = new THREE.Group(),
         outb = new THREE.Group(), roofMain = new THREE.Group(), roofOut = new THREE.Group();
   scene.add(site, ground, lower, outb, roofMain, roofOut);
+  // walkable rects and solid rects, recorded by floor()/box()/cyl() as the house is built,
+  // so the sims' navigation grid always matches the geometry rather than a hand-kept copy of it
+  const NAV = { floors: [], blocks: [], skip: 0, hard: 0 };
+  const rec = (list, p, x0, x1, z0, z1, y0, y1) => list.push({ p, hard: NAV.hard > 0,
+    x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1), y0, y1 });
 
   // ---------- helpers ----------
   function worldUV(geo, cx, cy, cz) {          // metre-based UVs so textures tile at real-world scale
@@ -482,6 +510,8 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     m.castShadow = cast && !mat.transparent;
     m.receiveShadow = recv;
     p.add(m);
+    if (!NAV.skip && (p === ground || p === lower) && !(mat && mat.transparent))
+      rec(NAV.blocks, p, x0, x1, z0, z1, Math.min(y0, y1), Math.max(y0, y1));
     return m;
   }
   function cyl(p, mat, x, z, y0, y1, r, seg = 14) {
@@ -489,6 +519,8 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     m.position.set(x, (y0 + y1) / 2, z);
     m.castShadow = true; m.receiveShadow = true;
     p.add(m);
+    if (!NAV.skip && (p === ground || p === lower))
+      rec(NAV.blocks, p, x - r, x + r, z - r, z + r, Math.min(y0, y1), Math.max(y0, y1));
     return m;
   }
   function strut(p, mat, a, b, s) {
@@ -500,7 +532,10 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     p.add(m);
     return m;
   }
-  const floor = (p, mat, x0, x1, z0, z1, y) => box(p, mat, x0, x1, y - 0.012, y, z0, z1, false, true);
+  const floor = (p, mat, x0, x1, z0, z1, y) => {
+    if (p === ground || p === lower) rec(NAV.floors, p, x0, x1, z0, z1, y, y);
+    return box(p, mat, x0, x1, y - 0.012, y, z0, z1, false, true);
+  };
 
   const OPEN = {
     door: { sill: 0, head: 2.1 },
@@ -517,6 +552,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   // Axis-aligned wall: axis 'x' runs along x at z=c; 'z' runs along z at x=c.
   // skin {side, out, in} makes it an exterior wall with its own outside / inside finishes.
   function wall(p, mats, axis, c, a, b, y0, h, t, ops, skin) {
+    NAV.hard++;   // structure, not furniture: sims keep a full body's clearance
     let wm = mats.wall;
     if (skin) {
       a -= t / 2; b += t / 2;
@@ -546,7 +582,9 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
         seg(o.e - 0.05, o.e, o.sill, o.head, mats.frame, ft);
         if (o.e - o.s > 1.3) { const m = (o.s + o.e) / 2; seg(m - 0.025, m + 0.025, o.sill, o.head, mats.frame, ft); }
       } else if (o.fill === 'door') {
+        NAV.skip++;   // the leaf is drawn shut but sims walk through it
         seg(o.s + 0.03, o.e - 0.03, 0, o.head - 0.02, mats.door, 0.05);
+        NAV.skip--;
       } else if (o.fill === 'veneer') {
         seg(o.s + 0.02, o.e - 0.02, 0, o.head, mats.veneer, 0.05);
       } else if (o.fill === 'garage') {
@@ -555,6 +593,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       cur = o.e;
     }
     seg(cur, b, 0, h, wm);
+    NAV.hard--;
   }
   const EXT = (side, out, inn) => ({ side, out, in: inn || 'wall' });
 
@@ -1137,8 +1176,354 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     return { el, grp, pos: new THREE.Vector3(x, y, z), hidden: false };
   });
 
+  // ---------- sims ----------
+  const CELL = 0.1, SIM_R = 0.22, SOFT_R = 0.12, SPEED = 1.35;
+  const NEEDS = [
+    { k: 'energy',  label: 'Energy',  rate: 1 / 420 },
+    { k: 'hunger',  label: 'Hunger',  rate: 1 / 300 },
+    { k: 'bladder', label: 'Bladder', rate: 1 / 260 },
+    { k: 'fun',     label: 'Fun',     rate: 1 / 340 },
+  ];
+  const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+  // the deck and the flat's stepped bath aren't laid with floor(), so add them by hand.
+  // the deck rects start at z 11.55 so they overlap the slider threshold and stay reachable.
+  NAV.floors.push(
+    { p: ground, x0: 2.4,    x1: 6.875,  z0: 11.55, z1: 12.75  },
+    { p: ground, x0: 6.875,  x1: 11.375, z0: 11.55, z1: 14.375 },
+    { p: ground, x0: 11.375, x1: 12.45,  z0: 11.55, z1: 12.6   },
+    { p: lower,  x0: 0,      x1: 2.55,   z0: 6.75,  z1: 8.075  });
+
+  // Occupancy grid: a cell is walkable if it is floor and no solid overlaps the walking band.
+  // Solids are inflated by the sim's radius, so a cell is a legal position for a sim's centre.
+  function buildNav(group, baseY) {
+    const fl = NAV.floors.filter(f => f.p === group);
+    let X0 = Infinity, X1 = -Infinity, Z0 = Infinity, Z1 = -Infinity;
+    for (const f of fl) { X0 = Math.min(X0, f.x0); X1 = Math.max(X1, f.x1); Z0 = Math.min(Z0, f.z0); Z1 = Math.max(Z1, f.z1); }
+    const ox = X0 - CELL, oz = Z0 - CELL;
+    const nx = Math.ceil((X1 - ox) / CELL) + 1, nz = Math.ceil((Z1 - oz) / CELL) + 1;
+    const walk = new Uint8Array(nx * nz);
+    const each = (x0, x1, z0, z1, fn) => {
+      const i0 = Math.max(0, Math.ceil((x0 - ox) / CELL - 0.5)), i1 = Math.min(nx - 1, Math.floor((x1 - ox) / CELL - 0.5));
+      const j0 = Math.max(0, Math.ceil((z0 - oz) / CELL - 0.5)), j1 = Math.min(nz - 1, Math.floor((z1 - oz) / CELL - 0.5));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) fn(j * nx + i);
+    };
+    for (const f of fl) each(f.x0, f.x1, f.z0, f.z1, k => { walk[k] = 1; });
+    const lo = baseY + 0.2, hi = baseY + 1.0;   // knee to chest: clears floor steps, catches furniture and window sills
+    for (const b of NAV.blocks) {
+      if (b.p !== group || b.y1 <= lo || b.y0 >= hi) continue;
+      // walls get a full body's clearance; furniture half, so a sim can slip between a chair and a table
+      const r = b.hard ? SIM_R : SOFT_R;
+      each(b.x0 - r, b.x1 + r, b.z0 - r, b.z1 + r, k => { walk[k] = 0; });
+    }
+    return { ox, oz, nx, nz, walk, y: baseY,
+      ci: x => Math.round((x - ox) / CELL - 0.5), cj: z => Math.round((z - oz) / CELL - 0.5),
+      wx: i => ox + (i + 0.5) * CELL, wz: j => oz + (j + 0.5) * CELL };
+  }
+  const NAVG = { g: buildNav(ground, FFL), l: buildNav(lower, 0.015) };
+
+  function nearestCell(nav, i, j) {
+    const ok = (a, b) => a >= 0 && b >= 0 && a < nav.nx && b < nav.nz && nav.walk[b * nav.nx + a];
+    if (ok(i, j)) return j * nav.nx + i;
+    for (let r = 1; r < 45; r++) for (let d = -r; d <= r; d++) {
+      if (ok(i + d, j - r)) return (j - r) * nav.nx + i + d;
+      if (ok(i + d, j + r)) return (j + r) * nav.nx + i + d;
+      if (ok(i - r, j + d)) return (j + d) * nav.nx + i - r;
+      if (ok(i + r, j + d)) return (j + d) * nav.nx + i + r;
+    }
+    return -1;
+  }
+
+  function aStar(nav, s, t) {
+    if (s < 0 || t < 0) return null;
+    if (s === t) return [s];
+    const nx = nav.nx, n = nx * nav.nz;
+    const g = new Float32Array(n).fill(Infinity), f = new Float32Array(n).fill(Infinity);
+    const prev = new Int32Array(n).fill(-1), closed = new Uint8Array(n), heap = [];
+    const tx = t % nx, tz = (t / nx) | 0;
+    const h = k => { const a = Math.abs(k % nx - tx), b = Math.abs(((k / nx) | 0) - tz); return a + b + (Math.SQRT2 - 2) * Math.min(a, b); };
+    const swap = (a, b) => { const v = heap[a]; heap[a] = heap[b]; heap[b] = v; };
+    const push = v => { heap.push(v); let c = heap.length - 1; while (c) { const p = (c - 1) >> 1; if (f[heap[p]] <= f[heap[c]]) break; swap(p, c); c = p; } };
+    const pop = () => {
+      const top = heap[0], last = heap.pop();
+      if (heap.length) { heap[0] = last; let p = 0; for (;;) { const l = 2 * p + 1, r = l + 1; let m = p;
+        if (l < heap.length && f[heap[l]] < f[heap[m]]) m = l;
+        if (r < heap.length && f[heap[r]] < f[heap[m]]) m = r;
+        if (m === p) break; swap(p, m); p = m; } }
+      return top;
+    };
+    g[s] = 0; f[s] = h(s); push(s);
+    let guard = 0;
+    while (heap.length && guard++ < 250000) {
+      const c = pop();
+      if (c === t) { const path = []; for (let k = t; k >= 0; k = prev[k]) path.push(k); return path.reverse(); }
+      if (closed[c]) continue;
+      closed[c] = 1;
+      const ci = c % nx, cj = (c / nx) | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        if (!di && !dj) continue;
+        const ai = ci + di, aj = cj + dj;
+        if (ai < 0 || aj < 0 || ai >= nx || aj >= nav.nz) continue;
+        const a = aj * nx + ai;
+        if (!nav.walk[a] || closed[a]) continue;
+        if (di && dj && (!nav.walk[cj * nx + ai] || !nav.walk[aj * nx + ci])) continue;   // no squeezing through corners
+        const ng = g[c] + (di && dj ? Math.SQRT2 : 1);
+        if (ng < g[a]) { g[a] = ng; f[a] = ng + h(a); prev[a] = c; push(a); }
+      }
+    }
+    return null;
+  }
+
+  function clearLine(nav, i0, j0, i1, j1) {
+    const di = Math.abs(i1 - i0), dj = Math.abs(j1 - j0);
+    const si = i0 < i1 ? 1 : -1, sj = j0 < j1 ? 1 : -1;
+    let err = di - dj, i = i0, j = j0, guard = 0;
+    for (;;) {
+      if (!nav.walk[j * nav.nx + i]) return false;
+      if (i === i1 && j === j1) return true;
+      if (guard++ > 5000) return false;
+      const e2 = 2 * err;
+      if (e2 > -dj) { err -= dj; i += si; }
+      if (e2 < di) { err += di; j += sj; }
+    }
+  }
+  function smooth(nav, cells) {                 // string-pull: keep only the corners you can't see past
+    const out = [], nx = nav.nx;
+    let cur = 0;
+    while (cur < cells.length - 1) {
+      let best = cur + 1;
+      for (let k = Math.min(cells.length - 1, cur + 90); k > cur + 1; k--) {
+        if (clearLine(nav, cells[cur] % nx, (cells[cur] / nx) | 0, cells[k] % nx, (cells[k] / nx) | 0)) { best = k; break; }
+      }
+      out.push({ x: nav.wx(cells[best] % nx), z: nav.wz((cells[best] / nx) | 0) });
+      cur = best;
+    }
+    return out;
+  }
+
+  // ---------- sim bodies ----------
+  function makeSim(cfg) {
+    const g = new THREE.Group(), body = new THREE.Group();
+    g.add(body);
+    const skin = std(cfg.skin, { roughness: 0.75 }), top = std(cfg.top, { roughness: 0.85 });
+    const pants = std(cfg.bottom, { roughness: 0.85 }), hair = std(cfg.hair, { roughness: 0.9 });
+    const part = (mat, w, h, d, x, y, z, parent) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(x, y, z); m.castShadow = true; (parent || body).add(m); return m;
+    };
+    const hipY = 0.82, legL = 0.82;
+    const legs = [-1, 1].map(sd => {                       // hip pivots, so legs swing and fold to sit
+      const pv = new THREE.Group(); pv.position.set(sd * 0.11, hipY, 0); body.add(pv);
+      part(pants, 0.17, legL, 0.19, 0, -legL / 2, 0, pv);
+      part(M.dark, 0.18, 0.07, 0.26, 0, -legL + 0.03, 0.03, pv);
+      return pv;
+    });
+    part(top, 0.42, 0.58, 0.25, 0, hipY + 0.29, 0);
+    const arms = [-1, 1].map(sd => {
+      const pv = new THREE.Group(); pv.position.set(sd * 0.26, hipY + 0.51, 0); body.add(pv);
+      part(top, 0.12, 0.3, 0.13, 0, -0.15, 0, pv);
+      part(skin, 0.11, 0.26, 0.12, 0, -0.42, 0, pv);
+      return pv;
+    });
+    part(skin, 0.15, 0.12, 0.15, 0, hipY + 0.63, 0);
+    part(skin, 0.28, 0.3, 0.27, 0, hipY + 0.84, 0);
+    part(hair, 0.3, 0.11, 0.29, 0, hipY + 1.0, -0.01);
+    [-1, 1].forEach(sd => part(M.dark, 0.045, 0.05, 0.03, sd * 0.07, hipY + 0.87, 0.135));
+    const bob = new THREE.Mesh(new THREE.OctahedronGeometry(0.1),
+      new THREE.MeshStandardMaterial({ color: 0x52e052, emissive: 0x1f8a1f, roughness: 0.25 }));
+    bob.scale.set(1, 1.7, 1); bob.position.y = 2.15; g.add(bob);
+    (cfg.level === 'g' ? ground : lower).add(g);
+    const sim = { name: cfg.name, level: cfg.level, slot: cfg.slot, g, body, legs, arms, bob,
+      pos: { x: cfg.x, z: cfg.z }, face: 0, phase: 0, path: null, pi: 0,
+      goal: null, pose: null, timer: 0,
+      needs: { energy: 0.75, hunger: 0.7, bladder: 0.8, fun: 0.65 } };
+    g.userData.sim = sim;
+    return sim;
+  }
+
+  const SIMS = [
+    makeSim({ name: 'Ava',  level: 'g', slot: 0, x: 7.8, z: 4.2,  skin: 0xe8c0a0, top: 0xc2566a, bottom: 0x2f3a4a, hair: 0x2b2119 }),
+    makeSim({ name: 'Ben',  level: 'g', slot: 1, x: 6.1, z: 10.3, skin: 0xc99b72, top: 0x3f7d8c, bottom: 0x3a3f46, hair: 0x4a3420 }),
+    makeSim({ name: 'Cleo', level: 'g', slot: 2, x: 2.0, z: 10.3, skin: 0x8d5a3b, top: 0x8a6fb0, bottom: 0x586070, hair: 0x1a1512 }),
+    makeSim({ name: 'Dash', level: 'g', slot: 1, x: 7.0, z: 1.5,  skin: 0xf0d2b6, top: 0xd59a3c, bottom: 0x2e4536, hair: 0x7a4b22 }),
+    makeSim({ name: 'Elle', level: 'l', slot: 0, x: 4.0, z: 9.0,  skin: 0xddb08c, top: 0x4f9e6a, bottom: 0x34383d, hair: 0x6b3f2a }),
+  ];
+
+  // go: where the sim stands to start the action. pose: where it ends up while doing it.
+  const ACTS = [
+    { label: 'Sleep',    need: 'energy',  level: 'g', go: [2.00, 9.90], secs: 16, pose: { t: 'lie', x: 3.575, z: 9.90,  y: 0.62, face: -Math.PI / 2 } },
+    { label: 'Sleep',    need: 'energy',  level: 'g', go: [2.00, 6.50], secs: 16, pose: { t: 'lie', x: 2.175, z: 5.25,  y: 0.62, face: -Math.PI / 2 } },
+    { label: 'Sleep',    need: 'energy',  level: 'g', go: [8.80, 1.80], secs: 16, pose: { t: 'lie', x: 10.31, z: 1.775, y: 0.62, face: -Math.PI / 2 } },
+    { label: 'Eat',      need: 'hunger',  level: 'g', go: [6.10, 10.00], secs: 9, pose: { t: 'stand', face: -Math.PI / 2 } },
+    { label: 'Bathroom', need: 'bladder', level: 'g', go: [5.90, 6.50], secs: 7,  pose: { t: 'sit', x: 5.15, z: 5.70, face: Math.PI / 2 } },
+    { label: 'Piano',    need: 'fun',     level: 'g', go: [6.15, 3.90], secs: 13, pose: { t: 'sit', x: 6.15, z: 4.35, face: 0 } },
+    { label: 'Sofa',     need: 'fun',     level: 'g', go: [7.80, 4.00], secs: 11, pose: { t: 'sit', x: 7.80, z: 3.25, face: -Math.PI / 2 } },
+    { label: 'Sleep',    need: 'energy',  level: 'l', go: [5.90, 9.90], secs: 16, pose: { t: 'lie', x: 7.725, z: 9.875, y: 0.62, face: -Math.PI / 2 } },
+    { label: 'Eat',      need: 'hunger',  level: 'l', go: [1.40, 10.20], secs: 9, pose: { t: 'stand', face: -Math.PI / 2 } },
+    { label: 'Bathroom', need: 'bladder', level: 'l', go: [1.30, 7.50], secs: 7,  pose: { t: 'sit', x: 0.45, z: 7.30, dy: 0.165, face: 0 } },
+    { label: 'Sofa',     need: 'fun',     level: 'l', go: [3.90, 7.60], secs: 11, pose: { t: 'sit', x: 3.05, z: 7.60, face: Math.PI / 2 } },
+  ];
+  const actsFor = lvl => ACTS.filter(a => a.level === lvl);
+  const pickAct = (s, need) => {
+    const m = actsFor(s.level).filter(a => a.need === need);
+    return m.length ? m[s.slot % m.length] : null;
+  };
+  const levelShown = lvl => (lvl === 'g' ? state.floor !== 'lower' : state.floor !== 'ground');
+
+  function goTo(s, x, z) {
+    const nav = NAVG[s.level];
+    const cells = aStar(nav, nearestCell(nav, nav.ci(s.pos.x), nav.cj(s.pos.z)), nearestCell(nav, nav.ci(x), nav.cj(z)));
+    if (!cells) { s.path = null; s.goal = null; return false; }
+    if (cells.length < 2) { s.path = null; arrive(s); return true; }
+    s.path = smooth(nav, cells); s.pi = 0;
+    return true;
+  }
+  function arrive(s) {
+    s.path = null;
+    if (s.goal) { s.pose = s.goal.pose; s.timer = s.goal.secs; }
+  }
+  function sendTo(s, a) { s.goal = a; s.pose = null; s.timer = 0; if (!goTo(s, a.go[0], a.go[1])) s.goal = null; }
+
+  function stepSim(s, dt) {
+    for (const n of NEEDS) s.needs[n.k] = clamp01(s.needs[n.k] - dt * n.rate);
+    if (s.timer > 0) {
+      s.timer -= dt;
+      if (s.goal) s.needs[s.goal.need] = clamp01(s.needs[s.goal.need] + dt / s.goal.secs);
+      if (s.timer <= 0) { s.goal = null; s.pose = null; }
+      return;
+    }
+    if (s.path) {
+      const t = s.path[s.pi], dx = t.x - s.pos.x, dz = t.z - s.pos.z, d = Math.hypot(dx, dz);
+      if (d > 1e-4) s.face = Math.atan2(dx, dz);
+      const step = SPEED * dt;
+      if (d <= step) { s.pos.x = t.x; s.pos.z = t.z; if (++s.pi >= s.path.length) arrive(s); }
+      else { s.pos.x += dx / d * step; s.pos.z += dz / d * step; }
+      s.phase += dt * 8.5;
+      return;
+    }
+    if (!state.freeWill) return;
+    let worst = null;
+    for (const n of NEEDS) if (s.needs[n.k] < 0.35 && (!worst || s.needs[n.k] < s.needs[worst.k])) worst = n;
+    if (worst) { const a = pickAct(s, worst.k); if (a) sendTo(s, a); return; }
+    if (Math.random() < dt * 0.12) {                      // potter about
+      const nav = NAVG[s.level];
+      for (let k = 0; k < 24; k++) {
+        const c = (Math.random() * nav.walk.length) | 0;
+        if (nav.walk[c]) { goTo(s, nav.wx(c % nav.nx), nav.wz((c / nav.nx) | 0)); break; }
+      }
+    }
+  }
+
+  function poseSim(s) {
+    const nav = NAVG[s.level], p = s.pose;
+    if (p && p.t === 'lie') {
+      s.g.position.set(p.x, nav.y + (p.dy || 0), p.z);
+      s.g.rotation.y = p.face;
+      s.body.position.set(0, p.y, 0.85);                  // origin at the feet, head ends up 1.66 m along -z
+      s.body.rotation.x = -Math.PI / 2;
+      s.legs.forEach(l => { l.rotation.x = 0; });
+      s.arms.forEach(l => { l.rotation.x = 0; });
+    } else if (p && p.t === 'sit') {
+      s.g.position.set(p.x, nav.y + (p.dy || 0), p.z);
+      s.g.rotation.y = p.face;
+      s.body.position.set(0, -0.35, 0);
+      s.body.rotation.x = 0;
+      s.legs.forEach(l => { l.rotation.x = -1.4; });
+      s.arms.forEach(l => { l.rotation.x = -0.25; });
+    } else {
+      const sw = s.path ? Math.sin(s.phase) * 0.55 : 0;
+      s.g.position.set(s.pos.x, nav.y, s.pos.z);
+      s.g.rotation.y = (p && !s.path && p.face !== undefined) ? p.face : s.face;
+      s.body.position.set(0, s.path ? Math.abs(Math.sin(s.phase)) * 0.035 : 0, 0);
+      s.body.rotation.x = 0;
+      s.legs[0].rotation.x = sw; s.legs[1].rotation.x = -sw;
+      s.arms[0].rotation.x = -sw * 0.8; s.arms[1].rotation.x = sw * 0.8;
+    }
+    s.bob.visible = s === SIMS[state.sim];
+    s.bob.rotation.y += 0.025;
+  }
+
+  // ---------- play UI ----------
+  const btnPlay = document.getElementById('btnPlay');
+  const panel = document.getElementById('sims');
+  const elTabs = document.getElementById('simTabs'), elStatus = document.getElementById('simStatus');
+  const elNeeds = document.getElementById('simNeeds'), elActs = document.getElementById('simActs');
+  const btnFree = document.getElementById('btnFree');
+  let bars = [];
+
+  function buildPanel() {
+    elTabs.innerHTML = SIMS.map((s, i) =>
+      '<button type="button" class="simtab' + (i === state.sim ? ' on' : '') + '" data-sim="' + i + '">' + s.name + '</button>').join('');
+    elNeeds.innerHTML = NEEDS.map(n => '<div class="need"><span>' + n.label + '</span><i><b></b></i></div>').join('');
+    bars = [].slice.call(elNeeds.querySelectorAll('b'));
+    const s = SIMS[state.sim];
+    const seen = {};
+    elActs.innerHTML = actsFor(s.level).filter(a => !seen[a.label] && (seen[a.label] = 1)).map((a, i) =>
+      '<button type="button" data-act="' + ACTS.indexOf(pickAct(s, a.need) || a) + '">' + a.label + '</button>').join('');
+    btnFree.setAttribute('aria-pressed', String(state.freeWill));
+  }
+  function tickPanel() {
+    const s = SIMS[state.sim];
+    if (!s) return;
+    NEEDS.forEach((n, i) => {
+      const v = s.needs[n.k];
+      bars[i].style.width = (v * 100).toFixed(0) + '%';
+      bars[i].className = v < 0.3 ? 'low' : '';
+    });
+    elStatus.textContent = !levelShown(s.level) ? s.name + ' is on the other level'
+      : s.timer > 0 ? s.name + ' — ' + (s.goal ? s.goal.label.toLowerCase() : 'busy')
+      : s.path ? s.name + ' — walking' : s.name + ' — idle';
+  }
+  elTabs.addEventListener('click', e => {
+    const b = e.target.closest('[data-sim]');
+    if (b) { state.sim = +b.dataset.sim; buildPanel(); }
+  });
+  elActs.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (b) sendTo(SIMS[state.sim], ACTS[+b.dataset.act]);
+  });
+  btnFree.addEventListener('click', () => { state.freeWill = !state.freeWill; btnFree.setAttribute('aria-pressed', String(state.freeWill)); });
+
+  function simsApply() {
+    for (const s of SIMS) s.g.visible = state.play;
+    panel.hidden = !state.play;
+    btnPlay.setAttribute('aria-pressed', String(state.play));
+    if (state.play) buildPanel();
+  }
+  btnPlay.addEventListener('click', () => {
+    state.play = !state.play;
+    if (state.play && state.mode === 'exterior') state.mode = 'cutaway';
+    if (state.play) { hint.textContent = 'Click a sim to select, then click the floor to send them there'; hint.classList.remove('gone'); setTimeout(() => hint.classList.add('gone'), 6000); }
+    apply();
+  });
+
+  // click to select a sim / send them somewhere, without stealing orbit drags
+  const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), hitPt = new THREE.Vector3();
+  let downAt = null;
+  renderer.domElement.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; });
+  renderer.domElement.addEventListener('pointerup', e => {
+    const d = downAt; downAt = null;
+    if (!d || !state.play || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6) return;
+    const r = renderer.domElement.getBoundingClientRect();
+    ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ptr, camera);
+    const live = SIMS.filter(s => levelShown(s.level));
+    const hit = ray.intersectObjects(live.map(s => s.g), true)[0];
+    if (hit) {
+      let o = hit.object;
+      while (o && !o.userData.sim) o = o.parent;
+      if (o) { state.sim = SIMS.indexOf(o.userData.sim); buildPanel(); return; }
+    }
+    const s = SIMS[state.sim];
+    if (!s || !levelShown(s.level)) return;
+    const nav = NAVG[s.level];
+    if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -nav.y), hitPt)) return;
+    s.goal = null; s.pose = null; s.timer = 0;
+    goTo(s, hitPt.x, hitPt.z);
+  });
+
   // ---------- state / UI ----------
-  const state = { mode: 'cutaway', floor: 'all', labels: true };
+  const state = { mode: 'cutaway', floor: 'all', labels: true, play: false, sim: 0, freeWill: true };
   const btnLabels = document.getElementById('btnLabels');
   const btnTop = document.getElementById('btnTop');
   const btnReset = document.getElementById('btnReset');
@@ -1156,6 +1541,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     document.querySelectorAll('[data-floor]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.floor === state.floor)));
     btnLabels.setAttribute('aria-pressed', String(state.labels));
     btnLabels.disabled = ext;
+    simsApply();
   }
   document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { state.mode = b.dataset.mode; apply(); }));
   document.querySelectorAll('[data-floor]').forEach(b => b.addEventListener('click', () => { state.floor = b.dataset.floor; apply(); }));
@@ -1252,8 +1638,11 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
   else window.addEventListener('resize', resize);
 
+  let lastT = 0;
   function loop(now) {
     requestAnimationFrame(loop);
+    const dt = lastT ? Math.min(0.05, (now - lastT) / 1000) : 0;
+    lastT = now;
     if (tween) {
       const k = Math.min(1, (now - tween.start) / tween.ms);
       const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
@@ -1261,6 +1650,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       controls.target.lerpVectors(tween.t0, tween.t1, e);
       if (k >= 1) tween = null;
     }
+    if (state.play) { for (const s of SIMS) { stepSim(s, dt); poseSim(s); } tickPanel(); }
     controls.update();
     renderer.render(scene, camera);
     updateLabels();

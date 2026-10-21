@@ -26,6 +26,42 @@ Room sizes follow the agent plan. Ceiling heights, roof pitch and exact outbuild
 - Groups: `site`, `ground` (upper floor + deck), `lower` (flat + covered terrace), `outb` (studio, garage), `roofMain`, `roofOut`.
 - Room labels: `LABELS`. View modes: `apply()`. Camera framing: `viewFor()`.
 
+## Play mode
+
+The `Play` chip turns the model into a small Sims-style game. Click a sim to select them (green
+plumbob), then click the floor to send them there; the panel on the right has their needs and
+one button per interaction. `Free will` lets them look after themselves — when a need drops below
+0.35 they walk to the matching object on their own.
+
+- `SIMS` — the five characters, four upstairs and one in the flat. A sim belongs to one level and
+  never uses the stairs.
+- `ACTS` — the interactions. Each has `go` (where the sim stands to begin) and `pose`
+  (`stand` / `sit` / `lie`, with the exact spot and facing it ends up in). Sims with the same need
+  are spread across matching acts by `slot`, so they don't all pile onto one bed.
+- `NEEDS` — energy, hunger, bladder, fun, each draining at its own rate.
+
+### Navigation
+
+There is no hand-drawn walkable map. `floor()` records every floor rect and `box()` / `cyl()`
+record every solid into `NAV`, so the grid is derived from the geometry and stays correct when
+you move a wall. `buildNav()` turns that into a 10 cm occupancy grid per level; sims path with A*
+over it and string-pull the result so they cut corners naturally.
+
+Things worth knowing before you change it:
+
+- A cell is blocked if a solid overlaps the **walking band**, `baseY + 0.2` to `baseY + 1.0`.
+  The lower bound clears floor steps (the flat's bathroom is 165 mm up); the upper bound sits
+  under door heads so doorways stay open.
+- Solids are inflated by the sim's radius, so a walkable cell is a legal position for a sim's
+  centre. Walls use the full `SIM_R` (0.22); furniture uses `SOFT_R` (0.12), because at a full
+  body width the TV unit and piano seal the living room door and the dining chairs cut the dining
+  room in half. Sims will clip a chair by a few centimetres — that is the trade.
+- Transparent materials never block, so glass and sliders are walk-through. Door leaves are drawn
+  shut but wrapped in `NAV.skip` so they don't block either.
+- The deck and the flat's stepped bathroom aren't laid with `floor()`, so they are pushed into
+  `NAV.floors` by hand. The deck rects start at z 11.55 to overlap the slider threshold — without
+  that overlap there is a 10 cm gap at z 11.625 and the deck is unreachable.
+
 ## Decisions so far
 - Living room: built-in bookcase on the north wall, opposite the upright piano on the south wall; grey sofa beside the bookcase; TV unit on the west wall.
 - The flat sits under the west end of the house. The rest of the under-house space is sealed sub-floor —
