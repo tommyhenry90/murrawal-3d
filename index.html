@@ -1127,8 +1127,20 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     const hs = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 4.1, 16), MO.housing);
     hs.rotation.z = Math.PI / 2; hs.position.set(12.05, UP + 2.38, -6.72); hs.castShadow = true; outb.add(hs);
     box(outb, M.wood, 14.15, 14.55, y, y + 1.9, -6.2, -3.4);
-    box(outb, M.carton, 13.4, 14.1, y, y + 0.6, -2.6, -1.8);
-    box(outb, M.carton, 12.7, 13.3, y, y + 0.5, -2.5, -1.9);
+    box(outb, M.carton, 9.75, 10.45, y, y + 0.6, -2.6, -1.8);      // boxes shoved aside for the gym
+    box(outb, M.carton, 10.55, 11.15, y, y + 0.5, -2.5, -1.9);
+    // home gym: squat rack, bench, dumbbells and a wall mirror
+    box(outb, M.dark, 11.3, 14.4, y, y + 0.02, -6.7, -4.4);                          // rubber matting
+    [11.9, 13.5].forEach(gx => cyl(outb, M.steel, gx, -5.9, y, y + 2.0, 0.055, 8));  // rack uprights
+    box(outb, M.steel, 11.8, 13.6, y + 1.42, y + 1.48, -5.95, -5.85);                // barbell, head height
+    [11.95, 13.45].forEach(gx => box(outb, M.dark, gx - 0.16, gx + 0.16, y + 1.32, y + 1.64, -6.02, -5.78));
+    box(outb, M.dark, 10.0, 10.62, y + 0.38, y + 0.46, -5.7, -4.2);                  // bench pad
+    box(outb, M.steel, 10.24, 10.38, y, y + 0.38, -5.62, -5.46);
+    box(outb, M.steel, 10.24, 10.38, y, y + 0.38, -4.44, -4.28);
+    box(outb, M.steel, 13.88, 14.5, y, y + 0.18, -3.3, -2.4);                        // dumbbell rack
+    box(outb, M.steel, 13.88, 14.5, y + 0.46, y + 0.56, -3.3, -2.4);
+    [-3.15, -2.85, -2.55].forEach(gz => [14.02, 14.36].forEach(gx => cyl(outb, M.dark, gx, gz, y + 0.18, y + 0.34, 0.075, 8)));
+    box(outb, MO.mirror, 9.52, 9.56, y + 0.55, y + 2.05, -6.3, -4.3);
     [[11.75, 0.85], [14.85, 0.85]].forEach(([x, z]) => box(outb, M.postWhite, x - 0.05, x + 0.05, UP, UP + 2.28, z - 0.05, z + 0.05));
   }
 
@@ -1174,7 +1186,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     ['l', 'Bath / Laundry', '', 1.3, 1.2, 7.4, true],
     ['l', 'Sub-floor', '', 10.1, 1.0, 8.4, true],
     ['o', 'Studio', '2.8 × 6.6', -2.5, 3.2, 2.5],
-    ['o', 'Garage', '5.5 × 5.5', 12.05, 3.6, -4.3],
+    ['o', 'Garage gym', '5.5 × 5.5', 12.05, 3.6, -4.3],
     ['o', 'Parking', '', -1.0, 3.0, -4.0, true],
   ];
   const labels = LABELS.map(([grp, name, dims, x, y, z, minor]) => {
@@ -1212,7 +1224,8 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     { lvl: 's', x0: 1.9,   x1: 4.7,  z0: -7.8,  z1: -0.1 },    // entry courtyard
     { lvl: 's', x0: 4.7,   x1: 9.4,  z0: -7.4,  z1: -0.6 },    // front garden
     { lvl: 's', x0: 9.4,   x1: 11.6, z0: -1.6,  z1: 0.0  },    // gap between garage and house
-    { lvl: 's', x0: 11.5,  x1: 15.1, z0: -1.6,  z1: 5.0  },    // east gravel passage
+    { lvl: 's', x0: 11.5,  x1: 15.1, z0: -1.75, z1: 5.0  },    // east gravel passage
+    { lvl: 's', x0: 9.6,   x1: 14.5, z0: -6.8,  z1: -1.4 },    // inside the garage, in via its side door
     { lvl: 's', x0: -1.0,  x1: -0.1, z0: -1.1,  z1: 6.7  },    // west gravel passage
     { lvl: 's', x0: -4.0,  x1: 15.1, z0: -10.4, z1: -7.8 });   // the lane
 
@@ -1402,8 +1415,22 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       const tint = cfg.glasses === 'dark' ? 0x15181c : cfg.glasses === 'amber' ? 0xa9742f : 0x2b2b2f;
       part(figMat(tint, { roughness: 0.28 }), 0.3, 0.09, 0.035, 0, hipY + 0.87, 0.14);
     } else [-1, 1].forEach(sd => part(M.dark, 0.045, 0.05, 0.03, sd * 0.07, hipY + 0.87, 0.135));
+    let bar = null;
+    if (cfg.lifter) {
+      bar = new THREE.Group();
+      bar.position.set(shx, -0.52, 0);              // the hand, offset back to the body centreline
+      arms[0].add(bar);
+      const steel = figMat(0xb9bdc0, { roughness: 0.3 });
+      const shaft = new THREE.Mesh(new THREE.BoxGeometry(2 * shx + 0.7, 0.05, 0.05), steel);
+      shaft.castShadow = true; bar.add(shaft);
+      [-(shx + 0.24), shx + 0.24].forEach(px => {
+        const pl = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.34, 0.34), figMat(0x2a2d31));
+        pl.position.x = px; pl.castShadow = true; bar.add(pl);
+      });
+      bar.visible = false;
+    }
     const bob = plumbob(2.15); g.add(bob);
-    return { g, body, legs, arms, bob };
+    return { g, body, legs, arms, bob, bar: bar };
   }
 
   function makeDog(cfg) {
@@ -1436,10 +1463,12 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     folk.add(f.g);                                   // not parented to a floor: they move between levels
     const c = { kind, name: cfg.name, level: cfg.level, home: cfg.level, slot: cfg.slot || 0,
       y: NAVG[cfg.level].y, plan: null, crossTo: null,
-      g: f.g, body: f.body, legs: f.legs, arms: f.arms || null, tail: f.tail || null, bob: f.bob,
+      g: f.g, body: f.body, legs: f.legs, arms: f.arms || null, tail: f.tail || null, bob: f.bob, bar: f.bar || null,
       pos: { x: cfg.x, z: cfg.z }, face: 0, phase: 0, path: null, pi: 0,
       goal: null, pose: null, timer: 0, rest: 0, lying: false, nap: null,
       restless: cfg.restless || 0, speed: cfg.speed || 1, follow: cfg.follow || 0, laze: cfg.laze || 0,
+      playmate: cfg.playmate || null, bond: cfg.bond || null, fetch: !!cfg.fetch, zoomies: !!cfg.zoomies,
+      play: 0, playCool: 0, zoom: 0, eager: false, fetchWith: null, fetchLeg: 'out', fetchLeft: 0,
       needs: kind === 'person' ? { energy: 0.78, hunger: 0.66, bladder: 0.82, fun: 0.6 } : null };
     f.g.userData.sim = c;
     return c;
@@ -1450,7 +1479,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   const SIMS = [
     person({ name: 'Tommy',   level: 'g', slot: 0, x: 7.8, z: 4.2,  skin: 0xe9c3a3, hair: 0xb07a45, hairStyle: 'crop',
              beard: 0xa9693a, top: 0x1b1b1d, bottom: 0x202225, shorts: true, sleeveless: true, shoes: 0x1b1b1d,
-             brawn: 1.45 }),
+             brawn: 1.45, lifter: true }),
     person({ name: 'Duncan',  level: 'g', slot: 1, x: 9.8, z: 7.0,  skin: 0xdcb08c, hair: 0xc9c6c0, hairStyle: 'crop',
              top: 0xf0ece2, jacket: 0x7c7a63, bottom: 0x7f9ec4, glasses: 'dark', shoes: 0x4a4238 }),
     person({ name: 'Sherin',  level: 'g', slot: 2, x: 6.1, z: 10.3, skin: 0xecc5a8, hair: 0xe0c98a, hairStyle: 'bob',
@@ -1463,14 +1492,15 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
              top: 0xa9bcc4, yoke: 0xc9623a, motif: 0x2d3a52, bottom: 0x7d7f78, glasses: 'clear', barefoot: true }),
     person({ name: 'Shirley', level: 'l', slot: 1, x: 1.4, z: 10.2, skin: 0xeccab0, hair: 0xe8e6e2, hairStyle: 'short',
              top: 0xf4f2ec, jacket: 0xeae4d6, bottom: 0x5a5f66, glasses: 'clear', scarf: 0xf0eee8 }),
-    // temperaments: restless = how often they want to be somewhere else, follow = how much they stick to a person,
-    // laze = how readily they flop down instead
+    // temperaments: restless = how often they want to be elsewhere, follow = how much they stick to
+    // a person, laze = how readily they settle. playmate/bond/fetch/zoomies drive the social behaviour.
     dog({ name: 'Maggie', level: 'g', x: 4.0, z: 6.0,  coat: 0x24262a, collar: 0x8f2f33, grey: true,
-          restless: 1.0, speed: 1.9,  follow: 0.35, laze: 0.25 }),
-    dog({ name: 'Cruise', level: 'g', x: 7.6, z: 13.4, coat: 0x26282c,
-          restless: 0.14, speed: 0.55, follow: 0.2,  laze: 0.85 }),
+          restless: 1.0,  speed: 1.9,  follow: 0.3,  laze: 0.25, fetch: true }),
+    dog({ name: 'Cruise', level: 'l', x: 3.9, z: 7.6,  coat: 0x26282c,
+          restless: 0.35, speed: 0.55, follow: 0.75, laze: 0.75, playmate: 'Marley',
+          bond: 'Shirley', zoomies: true }),
     dog({ name: 'Marley', level: 'g', x: 3.3, z: 1.3,  coat: 0xece6d8,
-          restless: 0.45, speed: 1.1,  follow: 0.85, laze: 0.3 }),
+          restless: 0.45, speed: 1.1,  follow: 0.85, laze: 0.3,  playmate: 'Cruise' }),
   ];
 
   // go: where they stand to begin. pose: where they end up while doing it.
@@ -1485,8 +1515,10 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     { label: 'Sleep',    need: 'energy',  level: 'l', go: [5.90, 9.90], secs: 16, pose: { t: 'lie', x: 7.725, z: 9.875, y: 0.62, face: -Math.PI / 2 } },
     { label: 'Eat',      need: 'hunger',  level: 'l', go: [1.40, 10.20], secs: 9, pose: { t: 'stand', face: -Math.PI / 2 } },
     { label: 'Bathroom', need: 'bladder', level: 'l', go: [1.30, 7.50], secs: 7,  pose: { t: 'sit', x: 0.45, z: 7.30, dy: 0.165, face: 0 } },
-    { label: 'Sofa',     need: 'fun',     level: 'l', go: [3.90, 7.60], secs: 11, pose: { t: 'sit', x: 3.05, z: 7.60, face: Math.PI / 2 } },
+    { label: 'Sofa',     need: 'fun',     level: 'l', go: [3.90, 7.60], secs: 16, pose: { t: 'sit', x: 3.05, z: 7.60, face: Math.PI / 2 } },
     { label: 'Garden',   need: 'fun',     level: 'l', homes: ['g', 'l'], go: [4.00, 15.50], secs: 15, pose: { t: 'stand', face: 0 } },
+    { label: 'Weights',  need: 'fun',     level: 's', homes: ['g'], only: 'Tommy', go: [12.70, -5.00], secs: 20,
+      pose: { t: 'lift', x: 12.70, z: -5.45, face: Math.PI } },
   ];
   // Where the dogs would rather sleep than the floor. `go` is the standing spot they walk to,
   // then they hop up; `y` is the height of the surface they settle on.
@@ -1499,11 +1531,28 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     { level: 'l', label: "the flat's sofa", go: [3.90, 7.60], x: 3.05, z: 8.00,  y: 0.42, face:  0 },
   ];
   // `homes` lets a spot be offered to people who live on another level — the garden, for instance
-  const actsFor = home => ACTS.filter(a => (a.homes || [a.level]).indexOf(home) >= 0);
+  const actsFor = (home, name) => ACTS.filter(a =>
+    (a.homes || [a.level]).indexOf(home) >= 0 && (!a.only || a.only === name));
   const freeOf = (list, s) => list.filter(a => !a.taken || a.taken === s);
   function pickAct(s, need) {                       // spread people across beds; wait rather than share one
-    const pool = freeOf(actsFor(s.home).filter(a => a.need === need), s);
-    return pool.length ? pool[s.slot % pool.length] : null;
+    const pool = freeOf(actsFor(s.home, s.name).filter(a => a.need === need), s);
+    if (!pool.length) return null;
+    const mine = pool.filter(a => a.only === s.name);          // your own thing, most of the time
+    if (mine.length && Math.random() < 0.7) return mine[0];
+    return pool[s.slot % pool.length];
+  }
+  const byName = n => { for (const c of SIMS) if (c.name === n) return c; return null; };
+  // a bonded dog settles on whatever spot is right beside its person when they sit down
+  function sofaBeside(s) {
+    const p = s.bond && byName(s.bond);
+    if (!p || !p.pose || p.pose.t !== 'sit') return null;
+    let best = null, bd = 2.0;
+    for (const n of NAPS) {
+      if (n.taken && n.taken !== s) continue;
+      const d = Math.hypot(n.x - p.pose.x, n.z - p.pose.z);
+      if (d < bd) { bd = d; best = n; }
+    }
+    return best;
   }
   const levelShown = lvl => OUTDOOR[lvl] ? true : lvl === 'g' ? state.floor !== 'lower' : state.floor !== 'ground';
 
@@ -1571,12 +1620,17 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   const goTo = (s, x, z) => planTo(s, s.level, x, z);
   function arrive(s) {
     s.path = null;
+    s.eager = false;
     if (s.nap) { s.lying = true; s.rest = 20 + Math.random() * 40; return; }
     if (s.goal) { s.pose = s.goal.pose; s.timer = s.goal.secs; }
   }
   function release(s) { if (s.goal && s.goal.taken === s) s.goal.taken = null; }
-  function wake(s) { if (s.nap) { s.nap.taken = null; s.nap = null; } s.lying = false; }
-  function cancel(s) { release(s); wake(s); s.goal = null; s.pose = null; s.timer = 0; s.rest = 0; s.plan = null; }
+  function wake(s) { if (s.nap) { s.nap.taken = null; s.nap = null; } s.lying = false; s.eager = false; }
+  function cancel(s) {
+    release(s); wake(s);
+    s.goal = null; s.pose = null; s.timer = 0; s.rest = 0; s.plan = null; s.play = 0; s.fetchLeft = 0;
+    if (s.playmate) s.playCool = 30;
+  }
   function sendTo(s, a) {
     cancel(s); s.goal = a; a.taken = s;
     if (!planTo(s, a.level, a.go[0], a.go[1])) { a.taken = null; s.goal = null; }
@@ -1592,19 +1646,64 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     }
   }
 
+  function chase(s) {                               // romp around the lawn after your playmate
+    const m = s.playmate && byName(s.playmate);
+    if (m && m.level === 'l' && s.level === 'l') {
+      const a = Math.random() * Math.PI * 2, r = 2 + Math.random() * 4;
+      planTo(s, 'l', m.pos.x + Math.cos(a) * r, m.pos.z + Math.sin(a) * r);
+      return;
+    }
+    const nav = NAVG.l;
+    for (let k = 0; k < 60; k++) {
+      const c = (Math.random() * nav.walk.length) | 0;
+      const z = nav.wz((c / nav.nx) | 0);
+      if (nav.walk[c] && z > 11.9) { planTo(s, 'l', nav.wx(c % nav.nx), z); return; }   // out on the grass
+    }
+  }
+  function fetchStep(s) {
+    if (s.path) return;
+    const p = byName(s.fetchWith);
+    if (p) {
+      if (s.fetchLeg === 'out') {                   // after the ball
+        const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 4;
+        if (planTo(s, p.level, p.pos.x + Math.cos(a) * r, p.pos.z + Math.sin(a) * r)) { s.fetchLeg = 'back'; return; }
+      } else if (planTo(s, p.level, p.pos.x + 0.7, p.pos.z + 0.3)) {   // bring it back
+        s.fetchLeg = 'out'; s.fetchLeft--; return;
+      }
+    }
+    s.fetchLeft = 0;
+  }
+  function startFetch(s) {
+    const pool = SIMS.filter(p => p.kind === 'person' && !p.pose && levelShown(p.level));
+    if (!pool.length) return;
+    s.fetchWith = pool[(Math.random() * pool.length) | 0].name;
+    s.fetchLeg = 'out'; s.fetchLeft = 2 + ((Math.random() * 3) | 0);
+    fetchStep(s);
+  }
+
   function stepSim(s, dt) {
     if (s.kind === 'person') for (const n of NEEDS) s.needs[n.k] = clamp01(s.needs[n.k] - dt * n.rate);
-    else if (!s.path) s.phase += dt * 1.6;        // idle tail
+    else {
+      if (!s.path) s.phase += dt * 1.6;             // idle tail
+      if (s.zoom > 0) s.zoom -= dt;
+      if (s.playCool > 0) s.playCool -= dt;
+      if (s.play > 0) {
+        s.play -= dt;
+        if (s.zoomies && s.zoom <= 0 && Math.random() < dt * 0.35) s.zoom = 1.0 + Math.random() * 1.4;
+        if (s.play <= 0) s.playCool = 70 + Math.random() * 110;
+      }
+    }
     if (s.timer > 0) {
       s.timer -= dt;
       if (s.goal) s.needs[s.goal.need] = clamp01(s.needs[s.goal.need] + dt / s.goal.secs);
+      if (s.pose && s.pose.t === 'lift') s.phase += dt * 2.6;
       if (s.timer <= 0) { release(s); s.goal = null; s.pose = null; }
       return;
     }
     if (s.path) {
       const t = s.path[s.pi], dx = t.x - s.pos.x, dz = t.z - s.pos.z, d = Math.hypot(dx, dz);
       if (d > 1e-4) s.face = Math.atan2(dx, dz);
-      const step = (s.kind === 'dog' ? SPEED * s.speed : SPEED) * dt;
+      const step = (s.kind === 'dog' ? SPEED * s.speed * (s.zoom > 0 ? 5 : s.eager ? 2.4 : 1) : SPEED) * dt;
       if (d <= step) {
         s.pos.x = t.x; s.pos.z = t.z;
         if (t.y !== undefined) s.y = t.y;
@@ -1622,13 +1721,44 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       return;
     }
     if (!state.freeWill) return;
-    if (s.kind === 'dog') {                          // follow someone, potter off, or flop
+    if (s.kind === 'dog') {
+      // your person just sat down: go and sit with them
+      if (s.rest <= 0 && !s.nap) {
+        const beside = sofaBeside(s);
+        if (beside) {
+          s.nap = beside; beside.taken = s;
+          s.eager = true;                            // the one thing worth hurrying for
+          if (!planTo(s, beside.level, beside.go[0], beside.go[1])) wake(s);
+          return;
+        }
+      }
       if (s.rest > 0) { s.rest -= dt; if (s.rest <= 0) wake(s); return; }
+      if (s.play > 0) { if (!s.path) chase(s); return; }
+      if (s.fetchLeft > 0) { fetchStep(s); return; }
       if (Math.random() > dt * 0.6 * s.restless) return;
-      const people = SIMS.filter(p => p.kind === 'person' && p.level === s.level);
+      if (s.zoomies && s.zoom <= 0 && Math.random() < 0.05) s.zoom = 1.0 + Math.random() * 1.2;
+      const mate = s.playmate && byName(s.playmate);
+      if (mate && s.playCool <= 0 && mate.playCool <= 0 && mate.play <= 0 && mate.rest <= 0 && !mate.nap && Math.random() < 0.35) {
+        const secs = 22 + Math.random() * 25;
+        wake(s); wake(mate);
+        s.play = secs; mate.play = secs;
+        s.playCool = 0; mate.playCool = 0;
+        chase(s); chase(mate);
+        return;
+      }
+      if (s.fetch && Math.random() < 0.3) { startFetch(s); if (s.fetchLeft > 0) return; }
       let best = null, bd = Infinity;
-      for (const p of people) { const d = Math.hypot(p.pos.x - s.pos.x, p.pos.z - s.pos.z); if (d < bd) { bd = d; best = p; } }
-      if (best && bd > 1.4 && Math.random() < s.follow) planTo(s, best.level, best.pos.x, best.pos.z);
+      const bonded = s.bond && byName(s.bond);
+      if (bonded && Math.random() < 0.8) { best = bonded; bd = Math.hypot(bonded.pos.x - s.pos.x, bonded.pos.z - s.pos.z); }
+      else for (const p of SIMS) {
+        if (p.kind !== 'person' || p.level !== s.level) continue;
+        const d = Math.hypot(p.pos.x - s.pos.x, p.pos.z - s.pos.z);
+        if (d < bd) { bd = d; best = p; }
+      }
+      if (best && (bd > 1.4 || best.level !== s.level) && Math.random() < s.follow) {
+        s.eager = best === bonded;               // a slow dog still hurries to catch up with its person
+        planTo(s, best.level, best.pos.x, best.pos.z);
+      }
       else if (Math.random() < s.laze) {
         const free = NAPS.filter(n => n.level === s.home && (!n.taken || n.taken === s));
         if (free.length) {
@@ -1656,6 +1786,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     const nav = NAVG[s.level], p = s.pose;
     if (!s.crossTo) s.y = nav.y;
     s.g.visible = state.play && levelShown(s.level);
+    if (s.bar) s.bar.visible = !!(p && p.t === 'lift');
     s.bob.visible = s === SIMS[state.sim];
     s.bob.rotation.y += 0.025;
     if (s.kind === 'dog') {
@@ -1682,6 +1813,14 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       s.body.rotation.x = -Math.PI / 2;
       s.legs.forEach(l => { l.rotation.x = 0; });
       s.arms.forEach(l => { l.rotation.x = 0; });
+    } else if (p && p.t === 'lift') {
+      s.g.position.set(p.x, nav.y + (p.dy || 0), p.z);
+      s.g.rotation.y = p.face;
+      s.body.position.set(0, -0.05 + Math.sin(s.phase) * 0.045, 0);   // dip and drive
+      s.body.rotation.x = 0;
+      s.legs.forEach(l => { l.rotation.x = 0; });
+      const lift = -1.75 + Math.sin(s.phase) * 0.95;
+      s.arms.forEach(l => { l.rotation.x = lift; });
     } else if (p && p.t === 'sit') {
       s.g.position.set(p.x, nav.y + (p.dy || 0), p.z);
       s.g.rotation.y = p.face;
@@ -1717,7 +1856,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       elNeeds.innerHTML = NEEDS.map(n => '<div class="need"><span>' + n.label + '</span><i><b></b></i></div>').join('');
       bars = [].slice.call(elNeeds.querySelectorAll('b'));
       const seen = {};
-      elActs.innerHTML = actsFor(s.home).filter(a => !seen[a.label] && (seen[a.label] = 1))
+      elActs.innerHTML = actsFor(s.home, s.name).filter(a => !seen[a.label] && (seen[a.label] = 1))
         .map(a => '<button type="button" data-act="' + ACTS.indexOf(a) + '">' + a.label + '</button>').join('');
     }
     btnFree.setAttribute('aria-pressed', String(state.freeWill));
@@ -1731,9 +1870,11 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       bars[i].style.width = (v * 100).toFixed(0) + '%';
       bars[i].className = v < 0.3 ? 'low' : '';
     });
-    elStatus.textContent = !levelShown(s.level) ? s.name + ' is on the other level'
+    elStatus.textContent = !levelShown(s.level) ? s.name + ' is out of view'
       : s.timer > 0 ? s.name + ' — ' + (s.goal ? s.goal.label.toLowerCase() : 'busy')
-      : s.path ? s.name + (s.kind === 'dog' ? ' — trotting' : ' — walking')
+      : s.play > 0 ? s.name + ' — playing with ' + s.playmate + (s.zoom > 0 ? ', zoomies!' : '')
+      : s.fetchLeft > 0 ? s.name + (s.fetchLeg === 'back' ? ' — fetching' : ' — after the ball')
+      : s.path ? s.name + (s.kind === 'dog' ? (s.zoom > 0 ? ' — zoomies!' : ' — trotting') : ' — walking')
       : s.lying ? s.name + (s.nap ? ' — asleep on ' + s.nap.label : ' — flopped')
       : s.name + ' — idle';
   }
@@ -1745,7 +1886,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const s = SIMS[state.sim], want = ACTS[+b.dataset.act];
-    const same = actsFor(s.home).filter(a => a.label === want.label);
+    const same = actsFor(s.home, s.name).filter(a => a.label === want.label);
     sendTo(s, freeOf(same, s)[0] || want);
   });
   btnFree.addEventListener('click', () => {

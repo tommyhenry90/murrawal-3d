@@ -36,8 +36,21 @@ one button per interaction. `Free will` lets them look after themselves — when
 - `SIMS` — the household: Tommy, Duncan, Sherin, Harriet and Emma upstairs, Mark and Shirley in
   the flat, and three labradors. Everyone belongs to one level and nobody uses the stairs.
 - The dogs have temperaments rather than needs: `restless` (how often they want to be elsewhere),
-  `speed`, `follow` (how much they stick to the nearest person) and `laze` (how readily they settle).
-  Maggie is quick and always on the move, Marley is loyal, Cruise ambles and sleeps.
+  `speed`, `follow` (how much they stick to a person) and `laze` (how readily they settle), plus
+  four social traits:
+  - `playmate` — Marley and Cruise pair off and romp on the lawn (`chase()` picks points near each
+    other out on the grass). A session runs 20-45 s, then `playCool` keeps them from restarting
+    immediately. Maggie has no playmate, so she ignores the other two.
+  - `fetch` — Maggie's instead: she picks a person, bolts 4-8 m away after the ball, brings it
+    back, and repeats a few times.
+  - `zoomies` — Cruise only. Brief bursts at five times his usual pace, likeliest mid-romp. He is
+    the slowest dog on the property and by far the fastest for about a second at a time.
+  - `bond` — Cruise's person is Shirley. He follows her across levels, and `sofaBeside()` watches
+    for her sitting down and sends him to whichever nap spot is within 2 m of her seat. `eager`
+    lets him trot at 2.4x while catching up with her — the one thing he hurries for.
+  - Timers (`play`, `playCool`, `zoom`) tick at the top of `stepSim`, *before* the "already
+    walking" early return. Put them in the idle branch and they only count down while a dog is
+    standing still, which it almost never is: the romp then never ends.
 - Everyone wanders the whole property, not just their own floor: `wander()` picks another level
   some of the time, and `Garden` is a `fun` spot on the lawn offered to upstairs people too via
   its `homes` field. Crossing the property takes 20 seconds or more, so the autonomy threshold is
@@ -49,6 +62,10 @@ one button per interaction. `Free will` lets them look after themselves — when
   With every spot taken they flop on the floor instead.
 - An act is `taken` while someone is using it, and `pickAct` skips taken ones, so people queue for
   a bed or the bathroom instead of standing inside each other. A player-issued order overrides it.
+- The garage has a small gym — squat rack, bench, dumbbells, wall mirror — and `Weights` is an
+  act with `only: 'Tommy'`, so it is offered to nobody else. `pickAct` picks a person's own `only`
+  spot 70% of the time, which is what makes him go regularly. The `lift` pose swings both arms
+  through about 110 degrees and shows a barbell parented to one arm pivot, so it tracks both hands.
 - `brawn` on a figure broadens the frame — chest, shoulders, arms and legs scale, height does not.
   Default 1; Tommy is 1.45. It is purely cosmetic: everyone navigates on the same `SIM_R`.
 - Faces and clothes come from the photos in `characters/`, which is git-ignored — the likenesses
