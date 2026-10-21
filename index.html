@@ -812,7 +812,6 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   box(site, M.concrete, 11.5, 12.55, 0, 0.02, 8.4, 11.725, false, true);
   box(site, M.concrete, -1.4, -0.1, 0, 0.02, 6.75, 11.725, false, true);
   box(site, M.concrete, 9.6, 11.2, 0, 0.02, 18.7, 21.3, false, true);
-  [[11.2, 7.0], [11.2, 9.3], [11.2, 11.45]].forEach(([x, z]) => box(site, M.brick, x - 0.17, x + 0.17, 0, FFL - 0.3, z - 0.17, z + 0.17));
   // boundary: timber paling fences (the lot is slightly skewed to the house)
   fence(15.25, -1.4, 14.95, 5.0, UP, 1.8);
   fence(14.95, 5.0, 14.75, 8.4, 0, 4.0);
@@ -827,7 +826,6 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   // planting
   box(site, M.hedge, 12.65, 15.0, 0, 3.4, 9.2, 19.8);
   box(site, M.hedge, -5.0, -3.5, 0, 2.4, 13.5, 21.2);
-  palm(-2.7, 0, 12.6, 5.5); palm(-3.8, 0, 17.2, 7);
   bush(-2.6, 0, 9.0, 1.3); bush(2.5, 0, 20.3, 1.0); bush(6.5, 0, 20.5, 0.9); bush(-1.8, 0, 19.6, 1.1);
   bush(6.2, UP, -6.0, 1.1); bush(6.6, UP, -3.0, 0.8); bush(8.3, UP, -4.7, 0.7); bush(14.3, UP, 1.6, 1.0);
   tree(13.6, UP, 3.6, 0.9);
@@ -1022,6 +1020,11 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     wall(lower, ML, 'z', 2.55, 6.75, 8.075, y, LH, TI);
     wall(lower, ML, 'x', 8.075, 0, 2.55, y, LH, TI, [{ type: 'door', s: 1.0, e: 1.75 }]);
 
+    // sub-floor east of the flat: closed in to the slab soffit, no access and no openings
+    wall(lower, ML, 'x', 6.75, 5.05, 11.375, 0, FFL - 0.3, TE, [], BR('n'));
+    wall(lower, ML, 'z', 11.375, 6.75, 11.625, 0, FFL - 0.3, TE, [], BR('e'));
+    wall(lower, ML, 'x', 11.625, 8.75, 11.375, 0, FFL - 0.3, TE, [], BR('s'));
+
     // kitchen: white gloss, oak-look top, subway splashback
     box(lower, M.gloss, 0.1, 0.7, y, y + 0.86, 8.95, 11.52);
     box(lower, M.oak, 0.1, 0.72, y + 0.86, y + 0.9, 8.95, 11.52);
@@ -1047,9 +1050,6 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     box(lower, M.flatBath, 0.9, 1.7, 0.165, 0.18, 6.85, 7.72);
     box(lower, ML.glass, 0.9, 1.7, 0.165, 2.1, 7.72, 7.75);
     box(lower, M.white, 1.85, 2.48, 0.165, 1.0, 6.88, 7.5);
-    // covered terrace under the deck
-    table(lower, 9.5, 10.6, 9.3, 10.2, 0.02, 0.74, M.dark, M.dark);
-    [9.75, 10.35].forEach(x => { chair(lower, x, 9.0, 0.02, 'n', M.whiteF, M.dark); chair(lower, x, 10.5, 0.02, 's', M.whiteF, M.dark); });
   }
 
   // ---------- studio (alongside the house's west side), garage (on the street, north of Bed 3) ----------
@@ -1123,7 +1123,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     ['l', 'Kitchen / Living / Dining', '5.1 × 3.4', 2.5, 1.0, 9.8],
     ['l', 'Bed 4', '3.7 × 3.6', 6.9, 1.0, 8.7],
     ['l', 'Bath / Laundry', '', 1.3, 1.2, 7.4, true],
-    ['l', 'Covered terrace', '', 10.1, 1.0, 8.4, true],
+    ['l', 'Sub-floor', '', 10.1, 1.0, 8.4, true],
     ['o', 'Studio', '2.8 × 6.6', -2.5, 3.2, 2.5],
     ['o', 'Garage', '5.5 × 5.5', 12.05, 3.6, -4.3],
     ['o', 'Parking', '', -1.0, 3.0, -4.0, true],

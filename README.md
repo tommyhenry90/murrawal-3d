@@ -28,7 +28,10 @@ Room sizes follow the agent plan. Ceiling heights, roof pitch and exact outbuild
 
 ## Decisions so far
 - Living room: built-in bookcase on the north wall, opposite the upright piano on the south wall; grey sofa beside the bookcase; TV unit on the west wall.
-- The flat sits under the west end of the house; the area under the deep part of the deck is an open covered terrace.
+- The flat sits under the west end of the house. The rest of the under-house space is sealed sub-floor —
+  brick on all three open faces up to the slab soffit, no door or vent. There is no access under there.
+  The paving under the deck (z > 11.725) is still open and walkable.
+- No palms in the yard. The `palm()` helper is still defined but now unused.
 - The studio sits alongside the house's west side; the garage faces the street lane, north of Bed 3 (both from the aerial).
 - Materials: cream face brick, white cladding on the yard side, brown concrete tiles with solar on the yard slope, beige metal skillion over the street side, dark clinker brick garage.
 
