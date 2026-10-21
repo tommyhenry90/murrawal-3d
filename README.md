@@ -33,8 +33,15 @@ plumbob), then click the floor to send them there; the panel on the right has th
 one button per interaction. `Free will` lets them look after themselves — when a need drops below
 0.35 they walk to the matching object on their own.
 
-- `SIMS` — the five characters, four upstairs and one in the flat. A sim belongs to one level and
-  never uses the stairs.
+- `SIMS` — the household: Tommy, Duncan, Sherin, Harriet and Emma upstairs, Mark and Shirley in
+  the flat, and three labradors. Everyone belongs to one level and nobody uses the stairs.
+- The dogs have temperaments rather than needs: `restless` (how often they want to be elsewhere),
+  `follow` (how much they stick to the nearest person) and `laze` (how readily they flop down).
+  Maggie is energetic, Marley is loyal, Cruise mostly lies down.
+- An act is `taken` while someone is using it, and `pickAct` skips taken ones, so people queue for
+  a bed or the bathroom instead of standing inside each other. A player-issued order overrides it.
+- Faces and clothes come from the photos in `characters/`, which is git-ignored — the likenesses
+  are blocky approximations in code and the photos themselves are never published.
 - `ACTS` — the interactions. Each has `go` (where the sim stands to begin) and `pose`
   (`stand` / `sit` / `lie`, with the exact spot and facing it ends up in). Sims with the same need
   are spread across matching acts by `slot`, so they don't all pile onto one bed.
