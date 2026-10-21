@@ -115,6 +115,26 @@ Things worth knowing before you change it:
   treads block the side path at walking height, leaving a 23 cm gap — so the foot of both
   staircases was sealed off from the lawn. The hedge now starts at x 13.2 and the path is clear.
 
+### Controls on small screens
+
+The play panel is a bottom sheet on phones and a top-right card everywhere else, and it collapses
+to just the name tabs and a status line. It starts collapsed the first time you hit Play on a
+small screen. Measured share of the viewport taken by all the UI:
+
+| | phone portrait | phone landscape | desktop |
+|---|---|---|---|
+| play off | 13% | 17% | 8% |
+| collapsed | 21% | 20% | 11% |
+| expanded | 26% | 27% | 14% |
+
+Two things to keep in mind if you touch this:
+
+- `resize()` publishes the real control-bar height as `--ctrl-h`, and the phone sheet sits at
+  `bottom: calc(var(--ctrl-h) + 16px)`. The bar wraps to different heights, so don't hardcode it.
+- The short-screen rule must set `bottom: auto` on the panel. It keeps `top` from the base rule,
+  and setting only `bottom` gives it both — the panel then stretches the full height and swallows
+  94% of a landscape phone.
+
 ## Decisions so far
 - Living room: built-in bookcase on the north wall, opposite the upright piano on the south wall; grey sofa beside the bookcase; TV unit on the west wall.
 - The flat sits under the west end of the house. The rest of the under-house space is sealed sub-floor —

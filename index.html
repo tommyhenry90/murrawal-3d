@@ -13,6 +13,7 @@
   --bg:#dde3e0; --scene:#dde3e0; --panel:rgba(246,248,247,.9); --text:#17242b; --muted:#5d6b70;
   --border:rgba(23,36,43,.12); --seg:#e6ebe9; --on:#1d5866; --on-text:#ffffff;
   --label-bg:rgba(250,251,250,.95); --label-text:#17242b; --label-sub:#5f6d72; --shadow:0 8px 28px rgba(23,36,43,.14);
+  --ctrl-h:96px;   /* measured from the real control bar in resize() */
   color-scheme:light; box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
@@ -60,7 +61,14 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
 #simTabs{display:flex;flex-wrap:wrap;gap:4px}
 .simtab{appearance:none;-webkit-appearance:none;border:0;font:inherit;font-size:11.5px;font-weight:600;color:var(--muted);background:var(--seg);border-radius:8px;padding:5px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .simtab.on,.simtab[aria-pressed="true"]{background:var(--on);color:var(--on-text)}
-#simStatus{margin:8px 0 7px;font-size:11px;font-weight:500;color:var(--muted);min-height:14px}
+#simHead{display:flex;align-items:center;gap:5px;margin:8px 0 7px}
+#simStatus{margin:0;flex:1;font-size:11px;font-weight:500;color:var(--muted);min-height:14px}
+#simToggle{appearance:none;-webkit-appearance:none;border:0;background:var(--seg);color:var(--muted);
+  font:inherit;font-size:11px;line-height:1;border-radius:7px;padding:5px 7px;cursor:pointer;flex:0 0 auto;
+  -webkit-tap-highlight-color:transparent;transition:transform .18s}
+#sims.shut #simBody{display:none}
+#sims.shut #simToggle{transform:rotate(-90deg)}
+#sims.shut #simHead{margin-bottom:0}
 .need{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .need span{flex:0 0 50px;font-size:10.5px;font-weight:600;color:var(--muted)}
 .need i{flex:1;height:7px;border-radius:4px;background:var(--seg);overflow:hidden}
@@ -68,9 +76,48 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
 .need i b.low{background:#c6613f}
 #simActs{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 #simActs button{appearance:none;-webkit-appearance:none;border:0;font:inherit;font-size:11.5px;font-weight:600;color:var(--on-text);background:var(--on);border-radius:8px;padding:6px 9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-#btnFree{margin-top:8px}
+#btnFree{flex:0 0 auto;font-size:10.5px;padding:4px 7px}
 .simtab:focus-visible,#simActs button:focus-visible{outline:2px solid var(--on);outline-offset:2px}
-@media (max-width:620px){ #sims{width:168px;top:auto;bottom:124px;right:10px} }
+/* phones: the panel becomes a slim sheet sitting just above the view controls, not beside them */
+@media (max-width:620px){
+  #sims{top:auto;left:10px;right:10px;width:auto;bottom:calc(var(--ctrl-h) + 16px);padding:7px 8px;border-radius:13px}
+  #simTabs{flex-wrap:nowrap;overflow-x:auto;gap:5px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #simTabs::-webkit-scrollbar{display:none}
+  .simtab{flex:0 0 auto}
+  #simHead{margin:6px 0 5px}
+  #simNeeds{display:flex;gap:7px}
+  .need{flex:1;display:block;margin:0}
+  .need span{display:block;flex:none;font-size:9px;line-height:1.1;margin-bottom:3px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .need i{width:100%;height:6px}
+  #simActs{flex-wrap:nowrap;overflow-x:auto;gap:5px;margin-top:7px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #simActs::-webkit-scrollbar{display:none}
+  #simActs button{flex:0 0 auto;padding:6px 10px}
+  #controls{padding:5px;gap:5px;border-radius:15px;bottom:8px}
+  .seg{padding:2px;border-radius:11px}
+  .seg button,.chip{font-size:12.5px;padding:7px 3px}
+  .chip{padding:7px 9px}
+  #hud{top:10px;left:12px;right:12px}
+  #hud h1{font-size:16px}
+  #hint{top:54px;left:12px;font-size:11.5px}
+}
+/* short screens, mostly landscape phones: the scene has almost no height to spare */
+@media (max-height:560px){
+  #hud p,#hint{display:none}
+  #hud h1{font-size:15px}
+  #controls{bottom:6px;flex-direction:row;width:min(calc(100% - 16px),780px);align-items:stretch}
+  #controls > .seg,#controls > .row{flex:1 1 auto}
+  #sims{top:8px;bottom:auto;left:auto;right:8px;width:188px;
+    max-height:calc(100% - 86px);overflow-y:auto;padding:7px}
+  #simTabs{flex-wrap:nowrap;overflow-x:auto;gap:4px;scrollbar-width:none}
+  #simTabs::-webkit-scrollbar{display:none}
+  .simtab{flex:0 0 auto}
+  #simNeeds{display:flex;gap:6px}
+  .need{flex:1;display:block;margin:0}
+  .need span{display:block;flex:none;font-size:9px;line-height:1.1;margin-bottom:2px}
+  .need i{width:100%;height:5px}
+  #simActs{margin-top:6px}
+}
 @media (prefers-reduced-motion: reduce){ #hint{transition:none} .need i b{transition:none} }
 </style>
 </head>
@@ -85,10 +132,15 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   <div id="hint">Drag to orbit, pinch to zoom, two fingers to pan</div>
   <aside id="sims" hidden>
     <div id="simTabs"></div>
-    <p id="simStatus"></p>
-    <div id="simNeeds"></div>
-    <div id="simActs"></div>
-    <button type="button" class="simtab" id="btnFree">Free will</button>
+    <div id="simHead">
+      <p id="simStatus"></p>
+      <button type="button" class="simtab" id="btnFree">Free will</button>
+      <button type="button" id="simToggle" aria-expanded="true" aria-label="Hide details">▾</button>
+    </div>
+    <div id="simBody">
+      <div id="simNeeds"></div>
+      <div id="simActs"></div>
+    </div>
   </aside>
   <nav id="controls" aria-label="View controls">
     <div class="seg" role="group" aria-label="View">
@@ -1845,11 +1897,15 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   const elTabs = document.getElementById('simTabs'), elStatus = document.getElementById('simStatus');
   const elNeeds = document.getElementById('simNeeds'), elActs = document.getElementById('simActs');
   const btnFree = document.getElementById('btnFree');
+  const btnToggle = document.getElementById('simToggle');
+  const narrow = () => window.innerWidth <= 620 || window.innerHeight <= 560;
   let bars = [];
 
   function buildPanel() {
     elTabs.innerHTML = SIMS.map((s, i) =>
       '<button type="button" class="simtab' + (i === state.sim ? ' on' : '') + '" data-sim="' + i + '">' + s.name + '</button>').join('');
+    const active = elTabs.children[state.sim];
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const s = SIMS[state.sim];
     if (s.kind === 'dog') { elNeeds.innerHTML = ''; elActs.innerHTML = ''; bars = []; }
     else {
@@ -1893,18 +1949,24 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     state.freeWill = !state.freeWill;
     btnFree.setAttribute('aria-pressed', String(state.freeWill));
   });
+  btnToggle.addEventListener('click', () => { state.shut = !state.shut; simsApply(); });
 
   function simsApply() {
     for (const s of SIMS) s.g.visible = state.play;
     panel.hidden = !state.play;
+    panel.classList.toggle('shut', state.shut);
+    btnToggle.setAttribute('aria-expanded', String(!state.shut));
+    btnToggle.setAttribute('aria-label', state.shut ? 'Show details' : 'Hide details');
     btnPlay.setAttribute('aria-pressed', String(state.play));
     if (state.play) buildPanel();
   }
   btnPlay.addEventListener('click', () => {
     state.play = !state.play;
     if (state.play && state.mode === 'exterior') state.mode = 'cutaway';
+    if (state.play && narrow() && !state.touched) { state.shut = true; state.touched = true; }
     if (state.play) {
-      hint.textContent = 'Click someone to select them, then click the floor to send them there';
+      hint.textContent = narrow() ? 'Tap someone, then tap the floor'
+        : 'Click someone to select them, then click the floor to send them there';
       hint.classList.remove('gone');
       setTimeout(() => hint.classList.add('gone'), 6000);
     }
@@ -1946,7 +2008,8 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   });
 
   // ---------- state / UI ----------
-  const state = { mode: 'cutaway', floor: 'all', labels: true, play: false, sim: 0, freeWill: true };
+  const state = { mode: 'cutaway', floor: 'all', labels: true, play: false, sim: 0, freeWill: true,
+    shut: false, touched: false };
   const btnLabels = document.getElementById('btnLabels');
   const btnTop = document.getElementById('btnTop');
   const btnReset = document.getElementById('btnReset');
@@ -1989,6 +2052,8 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   function resize() {
     const r = stage.getBoundingClientRect();
     W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+    const ctrl = document.getElementById('controls');
+    if (ctrl) document.documentElement.style.setProperty('--ctrl-h', ctrl.offsetHeight + 'px');
     renderer.setSize(W, H, false);
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
@@ -2007,7 +2072,8 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     else dir = portrait ? new THREE.Vector3(-0.75, 0.8, 0.85) : new THREE.Vector3(-0.42, 0.72, 0.86);
     dir.normalize();
     const hudH = document.getElementById('hud').offsetHeight + 16;
-    const ctrlH = document.getElementById('controls').offsetHeight + 22;
+    const sheetH = (!panel.hidden && narrow()) ? panel.offsetHeight + 10 : 0;   // the sheet sits over the scene
+    const ctrlH = document.getElementById('controls').offsetHeight + 22 + sheetH;
     let yTop = 1 - 2 * hudH / H, yBot = -1 + 2 * ctrlH / H;
     if (yTop - yBot < 0.8) { yTop = 0.9; yBot = -0.9; }
     const savedP = camera.position.clone(), savedQ = camera.quaternion.clone();
