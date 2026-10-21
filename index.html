@@ -1397,7 +1397,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     const c = { kind, name: cfg.name, level: cfg.level, slot: cfg.slot || 0,
       g: f.g, body: f.body, legs: f.legs, arms: f.arms || null, tail: f.tail || null, bob: f.bob,
       pos: { x: cfg.x, z: cfg.z }, face: 0, phase: 0, path: null, pi: 0,
-      goal: null, pose: null, timer: 0, rest: 0, lying: false,
+      goal: null, pose: null, timer: 0, rest: 0, lying: false, nap: null,
       restless: cfg.restless || 0, speed: cfg.speed || 1, follow: cfg.follow || 0, laze: cfg.laze || 0,
       needs: kind === 'person' ? { energy: 0.78, hunger: 0.66, bladder: 0.82, fun: 0.6 } : null };
     f.g.userData.sim = c;
@@ -1424,11 +1424,11 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     // temperaments: restless = how often they want to be somewhere else, follow = how much they stick to a person,
     // laze = how readily they flop down instead
     dog({ name: 'Maggie', level: 'g', x: 4.0, z: 6.0,  coat: 0x24262a, collar: 0x8f2f33, grey: true,
-          restless: 1.0, speed: 1.55, follow: 0.35, laze: 0.0 }),
+          restless: 1.0, speed: 1.9,  follow: 0.35, laze: 0.25 }),
     dog({ name: 'Cruise', level: 'g', x: 7.6, z: 13.4, coat: 0x26282c,
-          restless: 0.14, speed: 0.85, follow: 0.2,  laze: 0.85 }),
+          restless: 0.14, speed: 0.55, follow: 0.2,  laze: 0.85 }),
     dog({ name: 'Marley', level: 'g', x: 3.3, z: 1.3,  coat: 0xece6d8,
-          restless: 0.45, speed: 1.1,  follow: 0.85, laze: 0.15 }),
+          restless: 0.45, speed: 1.1,  follow: 0.85, laze: 0.3 }),
   ];
 
   // go: where they stand to begin. pose: where they end up while doing it.
@@ -1444,6 +1444,16 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     { label: 'Eat',      need: 'hunger',  level: 'l', go: [1.40, 10.20], secs: 9, pose: { t: 'stand', face: -Math.PI / 2 } },
     { label: 'Bathroom', need: 'bladder', level: 'l', go: [1.30, 7.50], secs: 7,  pose: { t: 'sit', x: 0.45, z: 7.30, dy: 0.165, face: 0 } },
     { label: 'Sofa',     need: 'fun',     level: 'l', go: [3.90, 7.60], secs: 11, pose: { t: 'sit', x: 3.05, z: 7.60, face: Math.PI / 2 } },
+  ];
+  // Where the dogs would rather sleep than the floor. `go` is the standing spot they walk to,
+  // then they hop up; `y` is the height of the surface they settle on.
+  const NAPS = [
+    { level: 'g', label: 'the big bed',   go: [2.00, 10.45], x: 3.20,  z: 10.45, y: 0.50, face: -Math.PI / 2 },
+    { level: 'g', label: "Bed 3's bed",   go: [8.80, 1.80],  x: 10.00, z: 2.25,  y: 0.50, face: -Math.PI / 2 },
+    { level: 'g', label: 'the sofa',      go: [7.80, 4.00],  x: 8.60,  z: 3.25,  y: 0.42, face:  Math.PI / 2 },
+    { level: 'g', label: 'the settee',    go: [7.00, 1.50],  x: 7.20,  z: 2.28,  y: 0.42, face:  Math.PI / 2 },
+    { level: 'l', label: "the flat's bed", go: [5.90, 9.90], x: 7.40,  z: 10.30, y: 0.50, face: -Math.PI / 2 },
+    { level: 'l', label: "the flat's sofa", go: [3.90, 7.60], x: 3.05, z: 8.00,  y: 0.42, face:  0 },
   ];
   const actsFor = lvl => ACTS.filter(a => a.level === lvl);
   const freeOf = (list, s) => list.filter(a => !a.taken || a.taken === s);
@@ -1462,9 +1472,14 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     s.path = smooth(nav, cells); s.pi = 0;
     return true;
   }
-  function arrive(s) { s.path = null; if (s.goal) { s.pose = s.goal.pose; s.timer = s.goal.secs; } }
+  function arrive(s) {
+    s.path = null;
+    if (s.nap) { s.lying = true; s.rest = 20 + Math.random() * 40; return; }
+    if (s.goal) { s.pose = s.goal.pose; s.timer = s.goal.secs; }
+  }
   function release(s) { if (s.goal && s.goal.taken === s) s.goal.taken = null; }
-  function cancel(s) { release(s); s.goal = null; s.pose = null; s.timer = 0; s.rest = 0; s.lying = false; }
+  function wake(s) { if (s.nap) { s.nap.taken = null; s.nap = null; } s.lying = false; }
+  function cancel(s) { release(s); wake(s); s.goal = null; s.pose = null; s.timer = 0; s.rest = 0; }
   function sendTo(s, a) {
     cancel(s); s.goal = a; a.taken = s;
     if (!goTo(s, a.go[0], a.go[1])) { a.taken = null; s.goal = null; }
@@ -1497,13 +1512,20 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     }
     if (!state.freeWill) return;
     if (s.kind === 'dog') {                          // follow someone, potter off, or flop
-      if (s.rest > 0) { s.rest -= dt; return; }
+      if (s.rest > 0) { s.rest -= dt; if (s.rest <= 0) wake(s); return; }
       if (Math.random() > dt * 0.6 * s.restless) return;
       const people = SIMS.filter(p => p.kind === 'person' && p.level === s.level);
       let best = null, bd = Infinity;
       for (const p of people) { const d = Math.hypot(p.pos.x - s.pos.x, p.pos.z - s.pos.z); if (d < bd) { bd = d; best = p; } }
       if (best && bd > 1.4 && Math.random() < s.follow) goTo(s, best.pos.x, best.pos.z);
-      else if (Math.random() < s.laze) { s.rest = 6 + Math.random() * 16; s.lying = true; }
+      else if (Math.random() < s.laze) {
+        const free = NAPS.filter(n => n.level === s.level && (!n.taken || n.taken === s));
+        if (free.length) {
+          const n = free[(Math.random() * free.length) | 0];
+          s.nap = n; n.taken = s;
+          if (!goTo(s, n.go[0], n.go[1])) wake(s);
+        } else { s.rest = 6 + Math.random() * 16; s.lying = true; }   // every sofa taken: floor it is
+      }
       else wander(s);
       return;
     }
@@ -1521,6 +1543,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       s.g.position.set(s.pos.x, nav.y, s.pos.z);
       s.g.rotation.y = s.face;
       if (s.lying && !s.path) {
+        if (s.nap) { s.g.position.set(s.nap.x, nav.y + s.nap.y - 0.15, s.nap.z); s.g.rotation.y = s.nap.face; }
         s.body.position.y = -0.26;
         s.legs.forEach(l => { l.rotation.x = 1.4; });
         s.tail.rotation.y = Math.sin(s.phase * 0.5) * 0.2;
@@ -1592,7 +1615,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     elStatus.textContent = !levelShown(s.level) ? s.name + ' is on the other level'
       : s.timer > 0 ? s.name + ' — ' + (s.goal ? s.goal.label.toLowerCase() : 'busy')
       : s.path ? s.name + (s.kind === 'dog' ? ' — trotting' : ' — walking')
-      : s.lying ? s.name + ' — flopped'
+      : s.lying ? s.name + (s.nap ? ' — asleep on ' + s.nap.label : ' — flopped')
       : s.name + ' — idle';
   }
   elTabs.addEventListener('click', e => {

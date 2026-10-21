@@ -36,8 +36,12 @@ one button per interaction. `Free will` lets them look after themselves — when
 - `SIMS` — the household: Tommy, Duncan, Sherin, Harriet and Emma upstairs, Mark and Shirley in
   the flat, and three labradors. Everyone belongs to one level and nobody uses the stairs.
 - The dogs have temperaments rather than needs: `restless` (how often they want to be elsewhere),
-  `follow` (how much they stick to the nearest person) and `laze` (how readily they flop down).
-  Maggie is energetic, Marley is loyal, Cruise mostly lies down.
+  `speed`, `follow` (how much they stick to the nearest person) and `laze` (how readily they settle).
+  Maggie is quick and always on the move, Marley is loyal, Cruise ambles and sleeps.
+- `NAPS` — the sofas and beds the dogs sleep on, claimed one dog at a time like the human acts.
+  A dog walks to the spot's `go` point and then hops up; `y` is the height of the surface, and the
+  pose sits the dog 0.15 m above its own origin so its belly lands on the cushion rather than in it.
+  With every spot taken they flop on the floor instead.
 - An act is `taken` while someone is using it, and `pickAct` skips taken ones, so people queue for
   a bed or the bathroom instead of standing inside each other. A player-issued order overrides it.
 - Faces and clothes come from the photos in `characters/`, which is git-ignored — the likenesses
