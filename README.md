@@ -38,6 +38,11 @@ one button per interaction. `Free will` lets them look after themselves — when
 - The dogs have temperaments rather than needs: `restless` (how often they want to be elsewhere),
   `speed`, `follow` (how much they stick to the nearest person) and `laze` (how readily they settle).
   Maggie is quick and always on the move, Marley is loyal, Cruise ambles and sleeps.
+- Everyone wanders the whole property, not just their own floor: `wander()` picks another level
+  some of the time, and `Garden` is a `fun` spot on the lawn offered to upstairs people too via
+  its `homes` field. Crossing the property takes 20 seconds or more, so the autonomy threshold is
+  0.45 rather than 0.35 — set it lower and people start bottoming out needs while still walking.
+  Someone queueing for a busy spot mills about on their current level instead of wandering off.
 - `NAPS` — the sofas and beds the dogs sleep on, claimed one dog at a time like the human acts.
   A dog walks to the spot's `go` point and then hops up; `y` is the height of the surface, and the
   pose sits the dog 0.15 m above its own origin so its belly lands on the cushion rather than in it.
@@ -60,6 +65,20 @@ record every solid into `NAV`, so the grid is derived from the geometry and stay
 you move a wall. `buildNav()` turns that into a 10 cm occupancy grid per level; sims path with A*
 over it and string-pull the result so they cut corners naturally.
 
+There are three levels: `g` (upper floor and deck, at `FFL`), `l` (the flat *and the rear yard* —
+the yard is 15 mm below the flat, so they share one grid and the flat's slider is just an opening
+in it) and `s` (the street side at `UP`: courtyard, parking, front garden, side passages and the
+lane). Solids are global and selected by height, so the same list serves every level — the house
+slab blocks the street grid, the garden hedge blocks the yard grid, and so on.
+
+`PORTALS` are the stairs and steps, each an explicit `[x, y, z]` polyline between two level grids:
+the deck stairs, the front steps, Bed 3's side door and the side-passage steps. `planTo()` runs a
+breadth-first search over that portal graph, then builds a plan alternating grid walks and portal
+walks. A character follows portal points with their real heights, so they walk *down* the stairs
+rather than dropping off the end. Characters live in the `folk` group rather than under a floor,
+because they change level as they go; `poseSim` sets their visibility from the floor filter each
+frame, and outdoor levels are always shown.
+
 Things worth knowing before you change it:
 
 - A cell is blocked if a solid overlaps the **walking band**, `baseY + 0.2` to `baseY + 1.0`.
@@ -71,9 +90,13 @@ Things worth knowing before you change it:
   room in half. Sims will clip a chair by a few centimetres — that is the trade.
 - Transparent materials never block, so glass and sliders are walk-through. Door leaves are drawn
   shut but wrapped in `NAV.skip` so they don't block either.
-- The deck and the flat's stepped bathroom aren't laid with `floor()`, so they are pushed into
-  `NAV.floors` by hand. The deck rects start at z 11.55 to overlap the slider threshold — without
-  that overlap there is a 10 cm gap at z 11.625 and the deck is unreachable.
+- The deck, the flat's stepped bathroom and all the outdoor ground aren't laid with `floor()`, so
+  they are pushed into `NAV.floors` by hand. Rects must *overlap* at thresholds: the deck rects
+  start at z 11.55 and the rear lawn at z 11.5, because a floor ending at z 11.625 and another
+  starting at z 11.725 leaves a 10 cm hole and the two never connect.
+- The boundary hedge used to start at x 12.65, hard against the deck stairs. The four lowest
+  treads block the side path at walking height, leaving a 23 cm gap — so the foot of both
+  staircases was sealed off from the lawn. The hedge now starts at x 13.2 and the path is clear.
 
 ## Decisions so far
 - Living room: built-in bookcase on the north wall, opposite the upright piano on the south wall; grey sofa beside the bookcase; TV unit on the west wall.

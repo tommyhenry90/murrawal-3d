@@ -481,12 +481,18 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   // ---------- groups ----------
   const site = new THREE.Group(), ground = new THREE.Group(), lower = new THREE.Group(),
         outb = new THREE.Group(), roofMain = new THREE.Group(), roofOut = new THREE.Group();
-  scene.add(site, ground, lower, outb, roofMain, roofOut);
+  const folk = new THREE.Group();
+  scene.add(site, ground, lower, outb, roofMain, roofOut, folk);
   // walkable rects and solid rects, recorded by floor()/box()/cyl() as the house is built,
   // so the sims' navigation grid always matches the geometry rather than a hand-kept copy of it
   const NAV = { floors: [], blocks: [], skip: 0, hard: 0 };
-  const rec = (list, p, x0, x1, z0, z1, y0, y1) => list.push({ p, hard: NAV.hard > 0,
+  const rec = (list, lvl, x0, x1, z0, z1, y0, y1) => list.push({ lvl, hard: NAV.hard > 0,
     x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1), y0, y1 });
+  // every solid on the property, whichever group drew it; buildNav picks the ones at walking height
+  const solid = (p, x0, x1, z0, z1, y0, y1) => {
+    if (!NAV.skip && (p === ground || p === lower || p === outb || p === site))
+      rec(NAV.blocks, null, x0, x1, z0, z1, Math.min(y0, y1), Math.max(y0, y1));
+  };
 
   // ---------- helpers ----------
   function worldUV(geo, cx, cy, cz) {          // metre-based UVs so textures tile at real-world scale
@@ -510,8 +516,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     m.castShadow = cast && !mat.transparent;
     m.receiveShadow = recv;
     p.add(m);
-    if (!NAV.skip && (p === ground || p === lower) && !(mat && mat.transparent))
-      rec(NAV.blocks, p, x0, x1, z0, z1, Math.min(y0, y1), Math.max(y0, y1));
+    if (!(mat && mat.transparent)) solid(p, x0, x1, z0, z1, y0, y1);
     return m;
   }
   function cyl(p, mat, x, z, y0, y1, r, seg = 14) {
@@ -519,8 +524,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     m.position.set(x, (y0 + y1) / 2, z);
     m.castShadow = true; m.receiveShadow = true;
     p.add(m);
-    if (!NAV.skip && (p === ground || p === lower))
-      rec(NAV.blocks, p, x - r, x + r, z - r, z + r, Math.min(y0, y1), Math.max(y0, y1));
+    solid(p, x - r, x + r, z - r, z + r, y0, y1);
     return m;
   }
   function strut(p, mat, a, b, s) {
@@ -533,7 +537,8 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     return m;
   }
   const floor = (p, mat, x0, x1, z0, z1, y) => {
-    if (p === ground || p === lower) rec(NAV.floors, p, x0, x1, z0, z1, y, y);
+    const lvl = p === ground ? 'g' : p === lower ? 'l' : null;
+    if (lvl) rec(NAV.floors, lvl, x0, x1, z0, z1, y, y);
     return box(p, mat, x0, x1, y - 0.012, y, z0, z1, false, true);
   };
 
@@ -652,6 +657,8 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       const w = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.24, 16), M.tyre);
       w.rotation.z = Math.PI / 2; w.position.set(wx, 0.33, wz); w.castShadow = true; g.add(w);
     });
+    const al = rot ? 2.3 : 0.95, ac = rot ? 0.95 : 2.3;      // body is 1.76 x 4.4, turned by rot
+    rec(NAV.blocks, null, x - al, x + al, z - ac, z + ac, UP, UP + 1.4);
     g.position.set(x, UP + 0.03, z);
     g.rotation.y = rot || 0;
     p.add(g);
@@ -789,6 +796,8 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     const geo = new THREE.BoxGeometry(0.05, h, len);
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * (i < 8 ? len : 0.05), uv.getY(i) * (i < 8 || i >= 16 ? h : len));
+    rec(NAV.blocks, null, Math.min(ax, bx) - 0.06, Math.max(ax, bx) + 0.06,
+        Math.min(az, bz) - 0.06, Math.max(az, bz) + 0.06, y0, y0 + h);
     const m = new THREE.Mesh(geo, M.paling);
     m.position.set((ax + bx) / 2, y0 + h / 2, (az + bz) / 2);
     m.lookAt(bx, y0 + h / 2, bz);
@@ -796,6 +805,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     site.add(m);
   }
   function bush(x, y, z, r) {
+    rec(NAV.blocks, null, x - r, x + r, z - r, z + r, y, y + r * 1.2);
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), M.leaf);
     m.scale.set(1, 0.8, 1); m.position.set(x, y + r * 0.6, z);
     m.castShadow = true; m.receiveShadow = true;
@@ -863,7 +873,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   fence(1.9, -7.55, 2.95, -7.55, UP, 1.5);
   fence(4.05, -7.55, 4.7, -7.55, UP, 1.5);
   // planting
-  box(site, M.hedge, 12.65, 15.0, 0, 3.4, 9.2, 19.8);
+  box(site, M.hedge, 13.2, 15.0, 0, 3.4, 9.2, 19.8);     // held off the stairs to leave the side path clear
   box(site, M.hedge, -5.0, -3.5, 0, 2.4, 13.5, 21.2);
   bush(-2.6, 0, 9.0, 1.3); bush(2.5, 0, 20.3, 1.0); bush(6.5, 0, 20.5, 0.9); bush(-1.8, 0, 19.6, 1.1);
   bush(6.2, UP, -6.0, 1.1); bush(6.6, UP, -3.0, 0.8); bush(8.3, UP, -4.7, 0.7); bush(14.3, UP, 1.6, 1.0);
@@ -1189,15 +1199,27 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   // the deck and the flat's stepped bath aren't laid with floor(), so add them by hand.
   // the deck rects start at z 11.55 so they overlap the slider threshold and stay reachable.
   NAV.floors.push(
-    { p: ground, x0: 2.4,    x1: 6.875,  z0: 11.55, z1: 12.75  },
-    { p: ground, x0: 6.875,  x1: 11.375, z0: 11.55, z1: 14.375 },
-    { p: ground, x0: 11.375, x1: 12.45,  z0: 11.55, z1: 12.6   },
-    { p: lower,  x0: 0,      x1: 2.55,   z0: 6.75,  z1: 8.075  });
+    { lvl: 'g', x0: 2.4,    x1: 6.875,  z0: 11.55, z1: 12.75  },
+    { lvl: 'g', x0: 6.875,  x1: 11.375, z0: 11.55, z1: 14.375 },
+    { lvl: 'g', x0: 11.375, x1: 12.45,  z0: 11.55, z1: 12.6   },
+    { lvl: 'l', x0: 0,      x1: 2.55,   z0: 6.75,  z1: 8.075  },
+    // outdoors. The rear yard is 15 mm below the flat, so it shares the 'l' grid and the flat's
+    // slider is simply an opening in it. The street side is its own level at UP.
+    { lvl: 'l', x0: -4.6,  x1: 14.6, z0: 11.5,  z1: 21.2 },    // rear lawn and the slab under the deck
+    { lvl: 'l', x0: -1.5,  x1: 0.0,  z0: 6.6,   z1: 11.8 },    // west path beside the flat
+    { lvl: 'l', x0: 11.4,  x1: 14.6, z0: 8.3,   z1: 11.8 },    // east path at the foot of the steps
+    { lvl: 's', x0: -3.9,  x1: 1.9,  z0: -7.8,  z1: -0.7 },    // parking pad
+    { lvl: 's', x0: 1.9,   x1: 4.7,  z0: -7.8,  z1: -0.1 },    // entry courtyard
+    { lvl: 's', x0: 4.7,   x1: 9.4,  z0: -7.4,  z1: -0.6 },    // front garden
+    { lvl: 's', x0: 9.4,   x1: 11.6, z0: -1.6,  z1: 0.0  },    // gap between garage and house
+    { lvl: 's', x0: 11.5,  x1: 15.1, z0: -1.6,  z1: 5.0  },    // east gravel passage
+    { lvl: 's', x0: -1.0,  x1: -0.1, z0: -1.1,  z1: 6.7  },    // west gravel passage
+    { lvl: 's', x0: -4.0,  x1: 15.1, z0: -10.4, z1: -7.8 });   // the lane
 
   // Occupancy grid: a cell is walkable if it is floor and no solid overlaps the walking band.
   // Solids are inflated by the sim's radius, so a cell is a legal position for a sim's centre.
-  function buildNav(group, baseY) {
-    const fl = NAV.floors.filter(f => f.p === group);
+  function buildNav(lvl, baseY) {
+    const fl = NAV.floors.filter(f => f.lvl === lvl);
     let X0 = Infinity, X1 = -Infinity, Z0 = Infinity, Z1 = -Infinity;
     for (const f of fl) { X0 = Math.min(X0, f.x0); X1 = Math.max(X1, f.x1); Z0 = Math.min(Z0, f.z0); Z1 = Math.max(Z1, f.z1); }
     const ox = X0 - CELL, oz = Z0 - CELL;
@@ -1211,7 +1233,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     for (const f of fl) each(f.x0, f.x1, f.z0, f.z1, k => { walk[k] = 1; });
     const lo = baseY + 0.2, hi = baseY + 1.0;   // knee to chest: clears floor steps, catches furniture and window sills
     for (const b of NAV.blocks) {
-      if (b.p !== group || b.y1 <= lo || b.y0 >= hi) continue;
+      if (b.y1 <= lo || b.y0 >= hi) continue;
       // walls get a full body's clearance; furniture half, so a sim can slip between a chair and a table
       const r = b.hard ? SIM_R : SOFT_R;
       each(b.x0 - r, b.x1 + r, b.z0 - r, b.z1 + r, k => { walk[k] = 0; });
@@ -1220,7 +1242,21 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       ci: x => Math.round((x - ox) / CELL - 0.5), cj: z => Math.round((z - oz) / CELL - 0.5),
       wx: i => ox + (i + 0.5) * CELL, wz: j => oz + (j + 0.5) * CELL };
   }
-  const NAVG = { g: buildNav(ground, FFL), l: buildNav(lower, 0.015) };
+  const NAVG = { g: buildNav('g', FFL), l: buildNav('l', 0.015), s: buildNav('s', UP) };
+  const OUTDOOR = { s: true };
+
+  // Stairs and steps, as explicit routes between two level grids. `pts` are [x, y, z] from the
+  // `a` end to the `b` end; a sim follows them with real heights, so it walks down rather than drops.
+  const PORTALS = [
+    { a: 'g', b: 'l', label: 'the deck stairs',
+      pts: [[11.97, 2.67, 11.78], [11.97, 1.40, 10.35], [11.97, 0.12, 8.95], [12.30, 0.02, 8.60]] },
+    { a: 'g', b: 's', label: 'the front steps',
+      pts: [[3.50, 2.70, 0.50], [3.50, 2.69, -0.20], [3.50, 2.20, -1.45], [3.50, 2.20, -1.80]] },
+    { a: 'g', b: 's', label: "Bed 3's side door",
+      pts: [[10.90, 2.70, 0.60], [11.60, 2.68, 0.60], [12.20, 2.20, 0.60], [12.75, 2.20, 0.60]] },
+    { a: 's', b: 'l', label: 'the side steps',
+      pts: [[12.50, 2.20, 4.80], [12.50, 2.05, 5.15], [12.50, 0.15, 8.25], [12.45, 0.02, 8.60]] },
+  ];
 
   function nearestCell(nav, i, j) {
     const ok = (a, b) => a >= 0 && b >= 0 && a < nav.nx && b < nav.nz && nav.walk[b * nav.nx + a];
@@ -1397,8 +1433,9 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   }
 
   function addChar(kind, f, cfg) {
-    (cfg.level === 'g' ? ground : lower).add(f.g);
-    const c = { kind, name: cfg.name, level: cfg.level, slot: cfg.slot || 0,
+    folk.add(f.g);                                   // not parented to a floor: they move between levels
+    const c = { kind, name: cfg.name, level: cfg.level, home: cfg.level, slot: cfg.slot || 0,
+      y: NAVG[cfg.level].y, plan: null, crossTo: null,
       g: f.g, body: f.body, legs: f.legs, arms: f.arms || null, tail: f.tail || null, bob: f.bob,
       pos: { x: cfg.x, z: cfg.z }, face: 0, phase: 0, path: null, pi: 0,
       goal: null, pose: null, timer: 0, rest: 0, lying: false, nap: null,
@@ -1449,6 +1486,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     { label: 'Eat',      need: 'hunger',  level: 'l', go: [1.40, 10.20], secs: 9, pose: { t: 'stand', face: -Math.PI / 2 } },
     { label: 'Bathroom', need: 'bladder', level: 'l', go: [1.30, 7.50], secs: 7,  pose: { t: 'sit', x: 0.45, z: 7.30, dy: 0.165, face: 0 } },
     { label: 'Sofa',     need: 'fun',     level: 'l', go: [3.90, 7.60], secs: 11, pose: { t: 'sit', x: 3.05, z: 7.60, face: Math.PI / 2 } },
+    { label: 'Garden',   need: 'fun',     level: 'l', homes: ['g', 'l'], go: [4.00, 15.50], secs: 15, pose: { t: 'stand', face: 0 } },
   ];
   // Where the dogs would rather sleep than the floor. `go` is the standing spot they walk to,
   // then they hop up; `y` is the height of the surface they settle on.
@@ -1460,23 +1498,77 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     { level: 'l', label: "the flat's bed", go: [5.90, 9.90], x: 7.40,  z: 10.30, y: 0.50, face: -Math.PI / 2 },
     { level: 'l', label: "the flat's sofa", go: [3.90, 7.60], x: 3.05, z: 8.00,  y: 0.42, face:  0 },
   ];
-  const actsFor = lvl => ACTS.filter(a => a.level === lvl);
+  // `homes` lets a spot be offered to people who live on another level — the garden, for instance
+  const actsFor = home => ACTS.filter(a => (a.homes || [a.level]).indexOf(home) >= 0);
   const freeOf = (list, s) => list.filter(a => !a.taken || a.taken === s);
   function pickAct(s, need) {                       // spread people across beds; wait rather than share one
-    const pool = freeOf(actsFor(s.level).filter(a => a.need === need), s);
+    const pool = freeOf(actsFor(s.home).filter(a => a.need === need), s);
     return pool.length ? pool[s.slot % pool.length] : null;
   }
-  const levelShown = lvl => (lvl === 'g' ? state.floor !== 'lower' : state.floor !== 'ground');
+  const levelShown = lvl => OUTDOOR[lvl] ? true : lvl === 'g' ? state.floor !== 'lower' : state.floor !== 'ground';
 
-  function goTo(s, x, z) {
+  function gridPath(s, x, z) {
     const nav = NAVG[s.level];
     const cells = aStar(nav, nearestCell(nav, nav.ci(s.pos.x), nav.cj(s.pos.z)), nearestCell(nav, nav.ci(x), nav.cj(z)));
     if (!cells) { s.path = null; return false; }
     s.lying = false;
-    if (cells.length < 2) { s.path = null; arrive(s); return true; }
-    s.path = smooth(nav, cells); s.pi = 0;
+    s.path = cells.length < 2 ? null : smooth(nav, cells);     // null means already standing there
+    s.pi = 0;
     return true;
   }
+  function levelRoute(from, to) {                   // breadth-first over the portal graph
+    const prev = {}; prev[from] = null;
+    const q = [from];
+    while (q.length) {
+      const c = q.shift();
+      if (c === to) break;
+      for (const p of PORTALS) {
+        const other = p.a === c ? p.b : p.b === c ? p.a : null;
+        if (!other || prev[other] !== undefined) continue;
+        prev[other] = { portal: p, from: c, to: other };
+        q.push(other);
+      }
+    }
+    if (prev[to] === undefined) return null;
+    const out = [];
+    for (let k = to; prev[k]; k = prev[k].from) out.unshift(prev[k]);
+    return out;
+  }
+  function nextStep(s) {
+    while (s.plan && s.plan.length) {
+      const st = s.plan.shift();
+      if (st.t === 'portal') {
+        s.path = st.pts.map(q => ({ x: q[0], y: q[1], z: q[2] }));
+        s.pi = 0; s.crossTo = st.to; s.lying = false;
+        return;
+      }
+      if (!gridPath(s, st.x, st.z)) { s.plan = null; cancel(s); return; }
+      if (s.path) return;
+    }
+    s.plan = null;
+    arrive(s);
+  }
+  function planTo(s, lvl, x, z) {
+    s.plan = null; s.path = null; s.crossTo = null;
+    if (lvl === s.level) {
+      if (!gridPath(s, x, z)) return false;
+      if (!s.path) arrive(s);
+      return true;
+    }
+    const hops = levelRoute(s.level, lvl);
+    if (!hops) return false;
+    const plan = [];
+    for (const h of hops) {
+      const pts = h.portal.a === h.from ? h.portal.pts : h.portal.pts.slice().reverse();
+      plan.push({ t: 'walk', x: pts[0][0], z: pts[0][2] });
+      plan.push({ t: 'portal', to: h.to, pts: pts });
+    }
+    plan.push({ t: 'walk', x: x, z: z });
+    s.plan = plan;
+    nextStep(s);
+    return true;
+  }
+  const goTo = (s, x, z) => planTo(s, s.level, x, z);
   function arrive(s) {
     s.path = null;
     if (s.nap) { s.lying = true; s.rest = 20 + Math.random() * 40; return; }
@@ -1484,16 +1576,19 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
   }
   function release(s) { if (s.goal && s.goal.taken === s) s.goal.taken = null; }
   function wake(s) { if (s.nap) { s.nap.taken = null; s.nap = null; } s.lying = false; }
-  function cancel(s) { release(s); wake(s); s.goal = null; s.pose = null; s.timer = 0; s.rest = 0; }
+  function cancel(s) { release(s); wake(s); s.goal = null; s.pose = null; s.timer = 0; s.rest = 0; s.plan = null; }
   function sendTo(s, a) {
     cancel(s); s.goal = a; a.taken = s;
-    if (!goTo(s, a.go[0], a.go[1])) { a.taken = null; s.goal = null; }
+    if (!planTo(s, a.level, a.go[0], a.go[1])) { a.taken = null; s.goal = null; }
   }
-  function wander(s) {
-    const nav = NAVG[s.level];
-    for (let k = 0; k < 24; k++) {
+  const LVLS = ['g', 'l', 's'];
+  function wander(s, near) {                        // sometimes out of the house entirely
+    const roam = near ? 0 : s.kind === 'dog' ? 0.5 : 0.18;
+    const lvl = Math.random() < roam ? LVLS[(Math.random() * LVLS.length) | 0] : s.level;
+    const nav = NAVG[lvl];
+    for (let k = 0; k < 40; k++) {
       const c = (Math.random() * nav.walk.length) | 0;
-      if (nav.walk[c]) { goTo(s, nav.wx(c % nav.nx), nav.wz((c / nav.nx) | 0)); return; }
+      if (nav.walk[c]) { planTo(s, lvl, nav.wx(c % nav.nx), nav.wz((c / nav.nx) | 0)); return; }
     }
   }
 
@@ -1510,8 +1605,19 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       const t = s.path[s.pi], dx = t.x - s.pos.x, dz = t.z - s.pos.z, d = Math.hypot(dx, dz);
       if (d > 1e-4) s.face = Math.atan2(dx, dz);
       const step = (s.kind === 'dog' ? SPEED * s.speed : SPEED) * dt;
-      if (d <= step) { s.pos.x = t.x; s.pos.z = t.z; if (++s.pi >= s.path.length) arrive(s); }
-      else { s.pos.x += dx / d * step; s.pos.z += dz / d * step; }
+      if (d <= step) {
+        s.pos.x = t.x; s.pos.z = t.z;
+        if (t.y !== undefined) s.y = t.y;
+        if (++s.pi >= s.path.length) {
+          s.path = null;
+          if (s.crossTo) { s.level = s.crossTo; s.crossTo = null; s.y = NAVG[s.level].y; }
+          nextStep(s);
+        }
+      } else {
+        const k = step / d;
+        s.pos.x += dx * k; s.pos.z += dz * k;
+        if (t.y !== undefined) s.y += (t.y - s.y) * k;      // ride the stair down rather than drop off it
+      }
       s.phase += dt * (s.kind === 'dog' ? 13 : 8.5);
       return;
     }
@@ -1522,30 +1628,38 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       const people = SIMS.filter(p => p.kind === 'person' && p.level === s.level);
       let best = null, bd = Infinity;
       for (const p of people) { const d = Math.hypot(p.pos.x - s.pos.x, p.pos.z - s.pos.z); if (d < bd) { bd = d; best = p; } }
-      if (best && bd > 1.4 && Math.random() < s.follow) goTo(s, best.pos.x, best.pos.z);
+      if (best && bd > 1.4 && Math.random() < s.follow) planTo(s, best.level, best.pos.x, best.pos.z);
       else if (Math.random() < s.laze) {
-        const free = NAPS.filter(n => n.level === s.level && (!n.taken || n.taken === s));
+        const free = NAPS.filter(n => n.level === s.home && (!n.taken || n.taken === s));
         if (free.length) {
           const n = free[(Math.random() * free.length) | 0];
           s.nap = n; n.taken = s;
-          if (!goTo(s, n.go[0], n.go[1])) wake(s);
+          if (!planTo(s, n.level, n.go[0], n.go[1])) wake(s);
         } else { s.rest = 6 + Math.random() * 16; s.lying = true; }   // every sofa taken: floor it is
       }
       else wander(s);
       return;
     }
+    // set off earlier than you might think: crossing the property takes 20 seconds or more
     let worst = null;
-    for (const n of NEEDS) if (s.needs[n.k] < 0.35 && (!worst || s.needs[n.k] < s.needs[worst.k])) worst = n;
-    if (worst) { const a = pickAct(s, worst.k); if (a) { sendTo(s, a); return; } }   // all taken: mill about and retry
+    for (const n of NEEDS) if (s.needs[n.k] < 0.45 && (!worst || s.needs[n.k] < s.needs[worst.k])) worst = n;
+    if (worst) {
+      const a = pickAct(s, worst.k);
+      if (a) { sendTo(s, a); return; }
+      if (Math.random() < dt * 0.3) wander(s, true);   // queueing for it: stay on this level
+      return;
+    }
     if (Math.random() < dt * 0.12) wander(s);
   }
 
   function poseSim(s) {
     const nav = NAVG[s.level], p = s.pose;
+    if (!s.crossTo) s.y = nav.y;
+    s.g.visible = state.play && levelShown(s.level);
     s.bob.visible = s === SIMS[state.sim];
     s.bob.rotation.y += 0.025;
     if (s.kind === 'dog') {
-      s.g.position.set(s.pos.x, nav.y, s.pos.z);
+      s.g.position.set(s.pos.x, s.y, s.pos.z);
       s.g.rotation.y = s.face;
       if (s.lying && !s.path) {
         if (s.nap) { s.g.position.set(s.nap.x, nav.y + s.nap.y - 0.15, s.nap.z); s.g.rotation.y = s.nap.face; }
@@ -1577,7 +1691,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       s.arms.forEach(l => { l.rotation.x = -0.25; });
     } else {
       const sw = s.path ? Math.sin(s.phase) * 0.55 : 0;
-      s.g.position.set(s.pos.x, nav.y, s.pos.z);
+      s.g.position.set(s.pos.x, s.y, s.pos.z);
       s.g.rotation.y = (p && !s.path && p.face !== undefined) ? p.face : s.face;
       s.body.position.set(0, s.path ? Math.abs(Math.sin(s.phase)) * 0.035 : 0, 0);
       s.body.rotation.x = 0;
@@ -1603,7 +1717,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       elNeeds.innerHTML = NEEDS.map(n => '<div class="need"><span>' + n.label + '</span><i><b></b></i></div>').join('');
       bars = [].slice.call(elNeeds.querySelectorAll('b'));
       const seen = {};
-      elActs.innerHTML = actsFor(s.level).filter(a => !seen[a.label] && (seen[a.label] = 1))
+      elActs.innerHTML = actsFor(s.home).filter(a => !seen[a.label] && (seen[a.label] = 1))
         .map(a => '<button type="button" data-act="' + ACTS.indexOf(a) + '">' + a.label + '</button>').join('');
     }
     btnFree.setAttribute('aria-pressed', String(state.freeWill));
@@ -1631,7 +1745,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const s = SIMS[state.sim], want = ACTS[+b.dataset.act];
-    const same = actsFor(s.level).filter(a => a.label === want.label);
+    const same = actsFor(s.home).filter(a => a.label === want.label);
     sendTo(s, freeOf(same, s)[0] || want);
   });
   btnFree.addEventListener('click', () => {
@@ -1675,10 +1789,19 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     }
     const s = SIMS[state.sim];
     if (!s || !levelShown(s.level)) return;
-    const nav = NAVG[s.level];
-    if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -nav.y), hitPt)) return;
+    let best = null;
+    for (const lvl of LVLS) {                       // nearest walkable surface under the cursor
+      const nav = NAVG[lvl];
+      if (!levelShown(lvl)) continue;
+      if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -nav.y), hitPt)) continue;
+      const i = nav.ci(hitPt.x), j = nav.cj(hitPt.z);
+      if (i < 0 || j < 0 || i >= nav.nx || j >= nav.nz || !nav.walk[j * nav.nx + i]) continue;
+      const dist = hitPt.distanceTo(camera.position);
+      if (!best || dist < best.dist) best = { lvl: lvl, x: hitPt.x, z: hitPt.z, dist: dist };
+    }
+    if (!best) return;
     cancel(s);
-    goTo(s, hitPt.x, hitPt.z);
+    planTo(s, best.lvl, best.x, best.z);
   });
 
   // ---------- state / UI ----------
