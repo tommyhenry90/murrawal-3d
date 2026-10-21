@@ -44,6 +44,8 @@ one button per interaction. `Free will` lets them look after themselves — when
   With every spot taken they flop on the floor instead.
 - An act is `taken` while someone is using it, and `pickAct` skips taken ones, so people queue for
   a bed or the bathroom instead of standing inside each other. A player-issued order overrides it.
+- `brawn` on a figure broadens the frame — chest, shoulders, arms and legs scale, height does not.
+  Default 1; Tommy is 1.45. It is purely cosmetic: everyone navigates on the same `SIM_R`.
 - Faces and clothes come from the photos in `characters/`, which is git-ignored — the likenesses
   are blocky approximations in code and the photos themselves are never published.
 - `ACTS` — the interactions. Each has `go` (where the sim stands to begin) and `pose`

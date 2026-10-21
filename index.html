@@ -1321,19 +1321,23 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
       o.position.set(x, y, z); o.castShadow = true; (parent || body).add(o); return o;
     };
     const hipY = 0.82, legL = 0.82, shortL = 0.34;
+    const br = cfg.brawn || 1;                       // 1 is an ordinary build; higher broadens the frame
+    const tw = 0.42 * (1 + (br - 1) * 0.55), td = 0.25 * (1 + (br - 1) * 0.5);
+    const shx = 0.26 * (1 + (br - 1) * 0.5), lw = 1 + (br - 1) * 0.4, fa = 1 + (br - 1) * 0.6;
     const legs = [-1, 1].map(sd => {
       const pv = new THREE.Group(); pv.position.set(sd * 0.11, hipY, 0); body.add(pv);
       if (cfg.shorts) {
         const bare = legL - shortL - 0.06;
-        part(botM, 0.18, shortL, 0.2, 0, -shortL / 2, 0, pv);
-        part(skin, 0.15, bare, 0.16, 0, -(shortL + bare / 2), 0, pv);
-      } else part(botM, 0.17, legL, 0.19, 0, -legL / 2, 0, pv);
+        part(botM, 0.18 * lw, shortL, 0.2 * lw, 0, -shortL / 2, 0, pv);
+        part(skin, 0.15 * lw, bare, 0.16 * lw, 0, -(shortL + bare / 2), 0, pv);
+      } else part(botM, 0.17 * lw, legL, 0.19 * lw, 0, -legL / 2, 0, pv);
       part(cfg.barefoot ? skin : figMat(cfg.shoes || 0x24262a), 0.18, 0.07, 0.26, 0, -legL + 0.03, 0.03, pv);
       return pv;
     });
-    part(topM, 0.42, 0.58, 0.25, 0, hipY + 0.29, 0);
-    if (cfg.yoke) part(figMat(cfg.yoke), 0.425, 0.2, 0.255, 0, hipY + 0.48, 0);      // colour-blocked shoulders
-    if (cfg.motif) part(figMat(cfg.motif), 0.13, 0.13, 0.012, 0.09, hipY + 0.37, 0.13);
+    part(topM, tw, 0.58, td, 0, hipY + 0.29, 0);
+    if (br > 1.1) part(topM, tw + 0.07, 0.17, td, 0, hipY + 0.5, 0);                  // shoulders and traps
+    if (cfg.yoke) part(figMat(cfg.yoke), tw + 0.005, 0.2, td + 0.005, 0, hipY + 0.48, 0);   // colour-blocked shoulders
+    if (cfg.motif) part(figMat(cfg.motif), 0.13, 0.13, 0.012, 0.09, hipY + 0.37, td / 2 + 0.005);
     if (jacketM) {                                                                   // worn open: two front panels, one back
       part(jacketM, 0.1, 0.6, 0.27, -0.185, hipY + 0.28, 0);
       part(jacketM, 0.1, 0.6, 0.27, 0.185, hipY + 0.28, 0);
@@ -1342,12 +1346,12 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
     if (cfg.scarf) part(figMat(cfg.scarf), 0.35, 0.13, 0.27, 0, hipY + 0.61, 0);
     if (cfg.necklace) part(figMat(cfg.necklace, { roughness: 0.4 }), 0.17, 0.05, 0.1, 0, hipY + 0.57, 0.1);
     const arms = [-1, 1].map(sd => {
-      const pv = new THREE.Group(); pv.position.set(sd * 0.26, hipY + 0.51, 0); body.add(pv);
-      part(cfg.sleeveless ? skin : (jacketM || topM), 0.12, 0.3, 0.13, 0, -0.15, 0, pv);
-      part(cfg.tattoo ? figMat(cfg.tattoo) : skin, 0.11, 0.26, 0.12, 0, -0.42, 0, pv);
+      const pv = new THREE.Group(); pv.position.set(sd * shx, hipY + 0.51, 0); body.add(pv);
+      part(cfg.sleeveless ? skin : (jacketM || topM), 0.12 * br, 0.3, 0.13 * br, 0, -0.15, 0, pv);   // bicep
+      part(cfg.tattoo ? figMat(cfg.tattoo) : skin, 0.11 * fa, 0.26, 0.12 * fa, 0, -0.42, 0, pv);
       return pv;
     });
-    part(skin, 0.15, 0.12, 0.15, 0, hipY + 0.63, 0);
+    part(skin, 0.15 * (1 + (br - 1) * 0.35), 0.12, 0.15, 0, hipY + 0.63, 0);
     part(skin, 0.28, 0.3, 0.27, 0, hipY + 0.84, 0);
     part(hairM, 0.3, 0.11, 0.29, 0, hipY + 1.0, -0.01);                              // crown, everyone gets one
     const hs = cfg.hairStyle;
@@ -1408,7 +1412,8 @@ body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Ar
 
   const SIMS = [
     person({ name: 'Tommy',   level: 'g', slot: 0, x: 7.8, z: 4.2,  skin: 0xe9c3a3, hair: 0xb07a45, hairStyle: 'crop',
-             beard: 0xa9693a, top: 0x1b1b1d, bottom: 0x202225, shorts: true, sleeveless: true, shoes: 0x1b1b1d }),
+             beard: 0xa9693a, top: 0x1b1b1d, bottom: 0x202225, shorts: true, sleeveless: true, shoes: 0x1b1b1d,
+             brawn: 1.45 }),
     person({ name: 'Duncan',  level: 'g', slot: 1, x: 9.8, z: 7.0,  skin: 0xdcb08c, hair: 0xc9c6c0, hairStyle: 'crop',
              top: 0xf0ece2, jacket: 0x7c7a63, bottom: 0x7f9ec4, glasses: 'dark', shoes: 0x4a4238 }),
     person({ name: 'Sherin',  level: 'g', slot: 2, x: 6.1, z: 10.3, skin: 0xecc5a8, hair: 0xe0c98a, hairStyle: 'bob',
