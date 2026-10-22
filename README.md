@@ -135,6 +135,35 @@ Two things to keep in mind if you touch this:
   and setting only `bottom` gives it both — the panel then stretches the full height and swallows
   94% of a landscape phone.
 
+## Walk mode
+
+The `Walk` tab drops you inside at eye height (1.62 m). Drag to look, WASD or the on-screen stick
+to move, Shift or the `Run` chip to hurry, the dropdown to jump between rooms, Esc or `Exit walk`
+to come back out. While walking: the roof goes on, ceilings appear, door leaves are hidden so you
+can pass through, and the household stays visible and keeps living around you.
+
+- Collision casts four rays (ankle, knee, chest, head) against everything in `site`/`ground`/
+  `lower`/`outb`; anything flagged `userData.noCollide` is ignored, which is how slider glass and
+  door leaves let you through. Floor height comes from a downward ray, with a 0.3 m step limit,
+  so you walk up the deck steps but not up a wall.
+- `SPOTS` holds the jump destinations as `[x, z, yaw, level]`.
+- Phone: the stick and bar clear the safe-area insets, shrink on narrow screens and go side by
+  side in landscape; the canvas gets `touch-action: none` while walking so dragging to look does
+  not pan the page; `Run` exists because there is no Shift key on a phone.
+
+## Furniture
+
+The interior is the proposed furniture layout, which reassigns two rooms: the narrow band that
+used to be the living room is now **Dining** (long table, bench, sideboard, the built-in bookcase
+kept), and the old dining room is now the **Lounge** — baby grand in the corner, tobacco sofa
+floating with its back to the island, TV and floating console on the east wall, armchair facing
+the view. Bedrooms 2 and 3 and the master were refitted, and the studio became a two-desk study.
+
+If you move furniture, remember the sims point at it: `ACTS` has the piano stool and sofa seat,
+and `NAPS` has the spots the dogs sleep on. Both are checked by the harness — every `go` point
+must be walkable and every pair of acts reachable — so a move that strands them fails the tests
+rather than going unnoticed.
+
 ## Decisions so far
 - Living room: built-in bookcase on the north wall, opposite the upright piano on the south wall; grey sofa beside the bookcase; TV unit on the west wall.
 - The flat sits under the west end of the house. The rest of the under-house space is sealed sub-floor —
